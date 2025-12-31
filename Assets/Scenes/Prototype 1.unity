@@ -993,7 +993,10 @@ PrefabInstance:
       addedObject: {fileID: 155045089}
     - targetCorrespondingSourceObject: {fileID: 178130, guid: 9d37b85ddcab98c4d86332ff86f5aa02, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 155045088}
+      addedObject: {fileID: 155045095}
+    - targetCorrespondingSourceObject: {fileID: 178130, guid: 9d37b85ddcab98c4d86332ff86f5aa02, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 155045096}
   m_SourcePrefab: {fileID: 100100000, guid: 9d37b85ddcab98c4d86332ff86f5aa02, type: 3}
 --- !u!4 &136276476 stripped
 Transform:
@@ -1117,36 +1120,6 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 178130, guid: 9d37b85ddcab98c4d86332ff86f5aa02, type: 3}
   m_PrefabInstance: {fileID: 134444325}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &155045088
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 155045054}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c5e2f936a20d07646be4a26179f20b83, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::AIController
-  newVehicle: {fileID: 865014466}
-  isAuto: 0
-  isStart: 0
-  isBreak: 0
-  isStop: 0
-  CR:
-    fPP: {x: 0, y: 0}
-    fPAx: []
-    fPAn: 0
-    fVP: {x: 0, y: 0}
-    fVAx: []
-    isValid: 0
-    isEnd: 0
-  FCI:
-    processSelected: 0
-    keyInput: 0
-    inputTime: 0
-  FCIInfo: []
 --- !u!54 &155045089
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -1170,10 +1143,62 @@ Rigidbody:
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 1
-  m_IsKinematic: 0
+  m_IsKinematic: 1
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &155045095
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 155045054}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5e2f936a20d07646be4a26179f20b83, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AIController
+  newVehicle: {fileID: 0}
+  newVehiclePos: {x: 0, y: 0}
+  dt: 0
+  cube: {fileID: 8492164415223527731, guid: 0d8e58e582d488342886013c57b1816c, type: 3}
+  cube1: {fileID: 7996085671588247988, guid: 045d08b89530ce041ae2e373b44a4359, type: 3}
+  cube2: {fileID: 39190539459841838, guid: c2cb51010690d4a4c8be0de242d45544, type: 3}
+  cube3: {fileID: 5526395325541494968, guid: f58cf2f7a1c114a44b6fc9632e9209d7, type: 3}
+  cube4: {fileID: 5526395325541494968, guid: c8a9b8033e58af04580e7ece450b6194, type: 3}
+  cube5: {fileID: 7996085671588247988, guid: 781a1adfcf4ad7e48846c3e8a6f33dbc, type: 3}
+  cube6: {fileID: 178130, guid: 9d37b85ddcab98c4d86332ff86f5aa02, type: 3}
+  isStart: 0
+  isBreak: 0
+  isStop: 0
+  isReset: 0
+  vehicles: []
+  CR:
+    fPP: {x: 0, y: 0}
+    fPAx: []
+    fPAn: 0
+    fVP: {x: 0, y: 0}
+    fVAx: []
+    isValid: 0
+    isEnd: 0
+  FCI:
+    processSelected: 0
+    keyInput: 0
+    inputTime: 0
+  FCIInfo: []
+--- !u!114 &155045096
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 155045054}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 18b658b86128d8e4c8c9a0a3cbb79121, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Player2
 --- !u!1 &164072594
 GameObject:
   m_ObjectHideFlags: 0
@@ -3790,7 +3815,6 @@ GameObject:
   - component: {fileID: 588071694}
   - component: {fileID: 588071693}
   - component: {fileID: 588071692}
-  - component: {fileID: 588071691}
   m_Layer: 0
   m_Name: Controller
   m_TagString: Untagged
@@ -3798,28 +3822,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &588071691
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 588071690}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 80d680f508941e94aa8ff5df0aded7f1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Player2Controller
-  player2: {fileID: 155045054}
-  speed: 25
-  turnSpeed: 120
-  scriptA: {fileID: 155045088}
-  horizontalInput: 0
-  forwardInput: 0
-  rotaStopRight: 0
-  rotaStopLeft: 0
-  mainCamera: {fileID: 546342693}
-  hoodCamera: {fileID: 1777364618}
 --- !u!114 &588071692
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4969,12 +4971,12 @@ MonoBehaviour:
   player1: {fileID: 579822676}
   player2: {fileID: 155045054}
   player3: {fileID: 0}
-  car: {fileID: 194810, guid: 055a884ddbe4f7344a1515a4bda0c229, type: 3}
+  car: {fileID: 178130, guid: c775eaefaa50cfa46b722159e6888e89, type: 3}
   ute: {fileID: 178130, guid: c775eaefaa50cfa46b722159e6888e89, type: 3}
-  van: {fileID: 118600, guid: 77b021d9639a6a245bb083c47c5f3c9f, type: 3}
-  bus: {fileID: 126218, guid: 65f4c26c96d59444d8d547db0de16a57, type: 3}
-  armorCar: {fileID: 104122, guid: 261445f9525f35f42b2210b37f057698, type: 3}
-  scriptA: {fileID: 155045088}
+  van: {fileID: 178130, guid: c775eaefaa50cfa46b722159e6888e89, type: 3}
+  bus: {fileID: 178130, guid: c775eaefaa50cfa46b722159e6888e89, type: 3}
+  armorCar: {fileID: 178130, guid: c775eaefaa50cfa46b722159e6888e89, type: 3}
+  scriptA: {fileID: 155045095}
   headPlayer: {fileID: 0}
   headPlayerLog: {fileID: 0}
   spawnBaseZ: 0

@@ -16,7 +16,7 @@ public class Player1 : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other.gameObject.CompareTag("Vehicle"))
+        if (other.gameObject.CompareTag("Vehicle") && gameObject.activeSelf)
         {
             Debug.Log("Destroy:" + gameObject.name);
             gameObject.SetActive(false);

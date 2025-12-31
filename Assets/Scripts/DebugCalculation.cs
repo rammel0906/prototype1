@@ -81,7 +81,7 @@ public class DebugCalculation : MonoBehaviour
     {
         for (int i2 = 0; i2 < 360; i2++)
         {
-            time += 0.1f;
+            time += 0.05f;
             float angularVelocity = turnSpeed * Mathf.Deg2Rad;
             radius = playerSpeed / angularVelocity;
 
@@ -169,7 +169,7 @@ public class DebugCalculation : MonoBehaviour
             if (!isLoop)
             {
                 Debug.Log("I—¹");
-                foreach (var c in GameObject.FindGameObjectsWithTag("AAA")) Destroy(c);
+                foreach (var c in GameObject.FindGameObjectsWithTag("AAAS")) Destroy(c);
                 i = 0;
                 ii = 0;
                 iii = 0;

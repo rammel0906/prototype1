@@ -9,7 +9,6 @@ public class Player2Controller : MonoBehaviour
     public float turnSpeed = 120.0f;
 
     private Rigidbody rb;
-    public AIController scriptA;
 
     public float horizontalInput;
     public float forwardInput;
@@ -43,7 +42,7 @@ public class Player2Controller : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (player2 != null && !scriptA.isAuto)
+        if (player2 != null)
         {
             Vector3 rota = player2.transform.eulerAngles;
 
@@ -86,27 +85,24 @@ public class Player2Controller : MonoBehaviour
 
     private void OnMove2(InputValue movementValue)
     {
-        if (!scriptA.isAuto)
+        Vector2 movementVector = movementValue.Get<Vector2>();
+        horizontalInput = movementVector.x;
+        forwardInput = movementVector.y;
+
+        if (forwardInput < 0)
         {
-            Vector2 movementVector = movementValue.Get<Vector2>();
-            horizontalInput = movementVector.x;
-            forwardInput = movementVector.y;
+            forwardInput = 0;
+        }
 
-            if (forwardInput < 0)
-            {
-                forwardInput = 0;
-            }
-
-            if (rotaStopRight && horizontalInput > 0)
-            {
-                Debug.Log("‰E‚Ö‰ñ“]‚Å‚«‚Ü‚¹‚ñ");
-                horizontalInput = 0;
-            }
-            if (rotaStopLeft && horizontalInput < 0)
-            {
-                Debug.Log("¶‚Ö‰ñ“]‚Å‚«‚Ü‚¹‚ñ");
-                horizontalInput = 0;
-            }
+        if (rotaStopRight && horizontalInput > 0)
+        {
+            Debug.Log("‰E‚Ö‰ñ“]‚Å‚«‚Ü‚¹‚ñ");
+            horizontalInput = 0;
+        }
+        if (rotaStopLeft && horizontalInput < 0)
+        {
+            Debug.Log("¶‚Ö‰ñ“]‚Å‚«‚Ü‚¹‚ñ");
+            horizontalInput = 0;
         }
     }
 
@@ -120,16 +116,6 @@ public class Player2Controller : MonoBehaviour
         }
     }
 
-    private void OnAutoPilot(InputValue Value)
-    {
-        if (Value.isPressed)
-        {
-            scriptA.isAuto = !scriptA.isAuto;
-            if (scriptA.isAuto) scriptA.InitAuto();
-            else rb.isKinematic = false;
-        }
-    }
-
     private void ResetPlayer()
     {
         player2.transform.position = new Vector3(5.0f, 0.0f, -53.0f);
@@ -139,6 +125,5 @@ public class Player2Controller : MonoBehaviour
             player2.gameObject.SetActive(true);
             isReset = false;
         }
-        if (scriptA.isAuto) scriptA.InitAuto();
     }
 }

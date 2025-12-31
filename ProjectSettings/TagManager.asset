@@ -9,6 +9,7 @@ TagManager:
   - RayTarget
   - AAA
   - AAAA
+  - AAAS
   layers:
   - Default
   - TransparentFX

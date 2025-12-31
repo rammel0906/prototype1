@@ -3,15 +3,14 @@ using UnityEngine;
 public class VehicleController : MonoBehaviour
 {
     private float speed = 20.0f;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        
-    }
+    public AIController scriptA;
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
-        transform.Translate(Vector3.forward * Time.deltaTime * speed);
+        if (scriptA == null) return;
+
+        float dt = !scriptA.isStop ? scriptA.dt : Time.fixedDeltaTime;
+        transform.Translate(Vector3.forward * (speed * dt));
     }
 }

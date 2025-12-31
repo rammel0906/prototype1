@@ -36,7 +36,8 @@ public class VehicleSpawn : MonoBehaviour
     private bool isWaiting = false;
     private bool isFixedSpawnPos = false;
 
-    void Awake()
+    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    void Start()
     {
         players.AddRange(new List<GameObject> { player1, player2, player3 }.Where(p => p != null));
         headPlayer = players.Where(p => p != null).OrderByDescending(p => p.transform.position.z).FirstOrDefault();
@@ -47,12 +48,6 @@ public class VehicleSpawn : MonoBehaviour
             spawnBaseZ = headPlayer.transform.position.z + distance;
             SpawnVehicle();
         }
-    }
-
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-
     }
 
     // Update is called once per frame
@@ -157,8 +152,18 @@ public class VehicleSpawn : MonoBehaviour
             lanePos = new Vector3(7.5f, 0f, spawnBaseZ);
         }
         newVehicle = Instantiate(vehicle, lanePos, laneRot);
-        newVehicle.AddComponent<VehicleController>();
+        newVehicle.AddComponent<VehicleController>().scriptA = scriptA;
+
+        if (scriptA.newVehicle != null)
+        {
+            Vector2 newVehiclePos = new Vector2(newVehicle.transform.position.x, newVehicle.transform.position.z);
+            newVehiclePos.y = scriptA.CR.fVP.y + Mathf.Abs(scriptA.newVehicle.transform.position.z - newVehiclePos.y);
+            scriptA.newVehiclePos = newVehiclePos;
+        }
+
         scriptA.newVehicle = newVehicle;
+        scriptA.vehicles.RemoveAll(objects => objects == null);
+        scriptA.vehicles.Add(newVehicle);
         scriptA.isStart = true;
     }
 }
