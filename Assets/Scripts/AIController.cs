@@ -282,10 +282,10 @@ public class AIController : MonoBehaviour
             gameObject.SetActive(true);
             isReset = false;
         }
-        Startcoroutine(RestartAI);
+        StartCoroutine(RestartAI());
     }
 
-    IEnumerator restartAI()
+    IEnumerator RestartAI()
     {
         isRestarting = true;
         bool isRunning = false;
@@ -304,7 +304,7 @@ public class AIController : MonoBehaviour
             axes[0] = new Vector2(p.transform.right.x, p.transform.right.z);
             axes[1] = new Vector2(p.transform.forward.x, p.transform.forward.z);
 
-            RL.Add(pos, axes);
+            RL.Add(new RestartList(pos, axes));
         }
         
         Vector2 playerPos = new Vector2(transform.position.x, transform.position.z);
