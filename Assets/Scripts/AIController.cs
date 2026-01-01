@@ -250,7 +250,7 @@ public class AIController : MonoBehaviour
     IEnumerator PlayerMovement()
     {
         yield return new WaitForFixedUpdate();
-        for (int i = 0; i <= FCIInfo.Count; i++)
+        for (int i = 0; i < FCIInfo.Count; i++)
         {
             var f = FCIInfo[i];
             float elapsed = 0.0f;
@@ -301,8 +301,8 @@ public class AIController : MonoBehaviour
         {
             Vector2 pos = new Vector2(p.transform.position.x, p.transform.position.z);
             Vector2[] axes = new Vector2[2];
-            axes[0] = new Vector2(p.transform.right.x, p.transform.right.y);
-            axes[1] = new Vector2(p.transform.forward.x, p.transform.forward.y);
+            axes[0] = new Vector2(p.transform.right.x, p.transform.right.z);
+            axes[1] = new Vector2(p.transform.forward.x, p.transform.forward.z);
 
             RL.Add(pos, axes);
         }
@@ -313,13 +313,13 @@ public class AIController : MonoBehaviour
         playerAxes[1] = new Vector2(transform.forward.x, transform.forward.z);
         float playerAngle = transform.eulerAngles.y;
 
-        for(int i = 0; i <= vehicles.Count; i++)
+        for(int i = 0; i < vehicles.Count; i++)
         {    
-            Vector2 vehiclePos = PL.vehiclesPos[i];
+            Vector2 vehiclePos = RL.vehiclesPos[i];
             if (i > 0)
             {
-                Vector2 absCenter = PL.vehiclesPos[i - 1];
-                vehiclePos.y = CR.fVP.y + Mathf.abs(absCenter.y - vehiclePos.y);
+                Vector2 critenionAbs = RL.vehiclesPos[i - 1];
+                vehiclePos.y = CR.fVP.y + Mathf.Abs(critenionAbs.y - vehiclePos.y);
             }
             Vector2[] vehicleAxes = new Vector2[2];
             vehicleAxes[0] = RL.vehiclesAxes[i][0];
