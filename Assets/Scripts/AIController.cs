@@ -321,9 +321,7 @@ public class AIController : MonoBehaviour
                 Vector2 critenionAbs = RL.vehiclesPos[i - 1];
                 vehiclePos.y = CR.fVP.y + Mathf.Abs(critenionAbs.y - vehiclePos.y);
             }
-            Vector2[] vehicleAxes = new Vector2[2];
-            vehicleAxes[0] = RL.vehiclesAxes[i][0];
-            vehicleAxes[1] = RL.vehiclesAxes[i][1];
+            Vector2[] vehicleAxes = RL.vehiclesAxes[i];
 
             if (i == 0) 
             CR = new CalculationResult
