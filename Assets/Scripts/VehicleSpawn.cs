@@ -163,7 +163,7 @@ public class VehicleSpawn : MonoBehaviour
         else if (isRestarting)
         {
             int index = scriptA.RL.Count - 1;
-            newVehiclePos.y = scriptA.RL.vehiclesPos[index].y + Mathf.Abs(scriptA.RL.vehiclesPos[index].y - newVehiclePos.y);
+            newVehiclePos.y = scriptA.RL.vehiclesPos[index].y + Mathf.Abs(scriptA.newVehicle.transform.position.z - newVehiclePos.y);
             Vector2[] newVehicleAxes = new Vector2[2];
             newVehicleAxes[0] = new Vector2(newVehicle.transform.right.x, newVehicle.transform.right.z);
             newVehicleAxes[1] = new Vector2(newVehicle.transform.forward.x, newVehicle.transform.forward.z);
