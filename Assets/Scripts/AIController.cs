@@ -172,7 +172,7 @@ public class AIController : MonoBehaviour
         public Vector2 vehiclesPos;
         public Vector2[] vehiclesAxes;
 
-        public RestartList(pos, axes)
+        public RestartList(Vector2 pos, Vector2[] axes)
         {
             vehiclesPos = pos;
             vehiclesAxes = axes;
