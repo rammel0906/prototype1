@@ -155,7 +155,7 @@ public class VehicleSpawn : MonoBehaviour
         newVehicle.AddComponent<VehicleController>().scriptA = scriptA;
 
         Vector2 newVehiclePos = new Vector2(newVehicle.transform.position.x, newVehicle.transform.position.z);
-        if (scriptA.newVehicle != null &. !isRestarting)
+        if (scriptA.newVehicle != null && !isRestarting)
         {
             newVehiclePos.y =  + Mathf.Abs(scriptA.newVehicle.transform.position.z - newVehiclePos.y);
             scriptA.newVehiclePos = newVehiclePos;
