@@ -272,34 +272,51 @@ public class AIController : MonoBehaviour
         else InitStart();
     }
 
-    IEnumerator restartAI
+    IEnumerator restartAI()
     {
-        Vector2 playerPos = new Vector2(transform.position.x, transform.position.z);
-        Vector2[] playerAxes = new Vector2[2];
-        playerAxes[0] = new Vector2(transform.right.x, transform.right.z);
-        playerAxes[1] = new Vector2(transform.forward.x, transform.forward.z);
-        float playerAngle = transform.eulerAngles.y;
-
-        foreach(var v in vehicles)
-        {
-            Vector2 vehiclePos = new Vector2(newVehicle.transform.position.x, newVehicle.transform.position.z);
-            Vector2[] vehicleAxes = new Vector2[2];
-            vehicleAxes[0] = new Vector2(newVehicle.transform.right.x, newVehicle.transform.right.z);
-            vehicleAxes[1] = new Vector2(newVehicle.transform.forward.x, newVehicle.transform.forward.z);
-        }
-
-        CR = new CalculationResult
-        (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes);
-
         FCIInfo.Clear();
 
         rb.isKinematic = true;
         isBreak = false;
         isStop = false;
 
-        CalculationCourse();
+        bool isRunning = false;
+        
+        Vector2 playerPos = new Vector2(transform.position.x, transform.position.z);
+        Vector2[] playerAxes = new Vector2[2];
+        playerAxes[0] = new Vector2(transform.right.x, transform.right.z);
+        playerAxes[1] = new Vector2(transform.forward.x, transform.forward.z);
+        float playerAngle = transform.eulerAngles.y;
 
-        StartCoroutine(PlayerMovement());
+        for(int i = 0; i <vehicles.Count; i++)
+        {    
+            Vector2 vehiclePos = new Vector2(vehicles[i].transform.position.x, vehicles[i].transform.position.z);
+            if (i > 0)
+            {
+                GameObject absCenter = vehicles[i - 1];
+                GameObject absTo = vehicles[i];
+                vehiclePos.y = CR.fVP.y + Mathf.abs(absCenter.transform.position.z - absTo.transform.position.z);
+            }
+            Vector2[] vehicleAxes = new Vector2[2];
+            vehicleAxes[0] = new Vector2(vehicles[i].transform.right.x, vehicles[i].transform.right.z);
+            vehicleAxes[1] = new Vector2(vehicles[i].transform.forward.x, vehicles[i].transform.forward.z);
+
+            if (i == 0) 
+            CR = new CalculationResult
+            (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes);
+            else
+            CR = new CalculationResult
+            (CR.fPP, CR.fPAx, CR.fPA, vehiclePos, vehicleAxes);
+            
+
+            CalculationCourse();
+            if (!isRunning)
+            {
+                StartCoroutine(PlayerMovement());
+                isRunning = true;
+            }
+        }
+        isRunning = false;
     }
 
     private void CalculationCourse()
