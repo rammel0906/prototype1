@@ -287,14 +287,16 @@ public class AIController : MonoBehaviour
 
     IEnumerator restartAI()
     {
+        isRestarting = true;
+        bool isRunning = false;
+        
         RL.Clear();
         FCIInfo.Clear();
 
         rb.isKinematic = true;
         isBreak = false;
         isStop = false;
-
-        bool isRunning = false;
+        
         
         Vector2 playerPos = new Vector2(transform.position.x, transform.position.z);
         Vector2[] playerAxes = new Vector2[2];
