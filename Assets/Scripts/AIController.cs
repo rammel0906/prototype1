@@ -315,13 +315,13 @@ public class AIController : MonoBehaviour
 
         for(int i = 0; i < vehicles.Count; i++)
         {    
-            Vector2 vehiclePos = RL.vehiclesPos[i];
+            Vector2 vehiclePos = RL[i].vehiclesPos;
             if (i > 0)
             {
-                Vector2 critenionAbs = RL.vehiclesPos[i - 1];
+                Vector2 critenionAbs = RL[i - 1].vehiclesPos;
                 vehiclePos.y = CR.fVP.y + Mathf.Abs(critenionAbs.y - vehiclePos.y);
             }
-            Vector2[] vehicleAxes = RL.vehiclesAxes[i];
+            Vector2[] vehicleAxes = RL[i].vehiclesAxes;
 
             if (i == 0) 
             CR = new CalculationResult
