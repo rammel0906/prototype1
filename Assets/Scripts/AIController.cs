@@ -296,7 +296,16 @@ public class AIController : MonoBehaviour
         rb.isKinematic = true;
         isBreak = false;
         isStop = false;
-        
+
+        foreach (var p in vehicles)
+        {
+            Vector2 pos = new Vector2(p.transform.position.x, p.transform.position.z);
+            Vector2[] axes = new Vector2[2];
+            axes[0] = new Vector2(p.transform.right.x, p.transform.right.y);
+            axes[1] = new Vector2(p.transform.forward.x, p.transform.forward.y);
+
+            RL.Add(pos, axes);
+        }
         
         Vector2 playerPos = new Vector2(transform.position.x, transform.position.z);
         Vector2[] playerAxes = new Vector2[2];
@@ -306,23 +315,22 @@ public class AIController : MonoBehaviour
 
         for(int i = 0; i <= vehicles.Count; i++)
         {    
-            Vector2 vehiclePos = new Vector2(vehicles[i].transform.position.x, vehicles[i].transform.position.z);
+            Vector2 vehiclePos = PL.vehiclesPos[i];
             if (i > 0)
             {
-                GameObject absCenter = vehicles[i - 1];
-                GameObject absTo = vehicles[i];
-                vehiclePos.y = CR.fVP.y + Mathf.abs(absCenter.transform.position.z - absTo.transform.position.z);
+                Vector2 absCenter = PL.vehiclesPos[i - 1];
+                vehiclePos.y = CR.fVP.y + Mathf.abs(absCenter.y - vehiclePos.y);
             }
             Vector2[] vehicleAxes = new Vector2[2];
-            vehicleAxes[0] = new Vector2(vehicles[i].transform.right.x, vehicles[i].transform.right.z);
-            vehicleAxes[1] = new Vector2(vehicles[i].transform.forward.x, vehicles[i].transform.forward.z);
+            vehicleAxes[0] = RL.vehiclesAxes[i][0];
+            vehicleAxes[1] = RL.vehiclesAxes[i][1];
 
             if (i == 0) 
             CR = new CalculationResult
             (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes);
             else
             CR = new CalculationResult
-            (CR.fPP, CR.fPAx, CR.fPA, vehiclePos, vehicleAxes);
+            (CR.fPP, CR.fPAx, CR.fPAn, vehiclePos, vehicleAxes);
 
             CalculationCourse();
             if (!isRunning)
