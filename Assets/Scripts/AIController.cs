@@ -30,6 +30,7 @@ public class AIController : MonoBehaviour
     public bool isBreak = false;
     public bool isStop = false;
     public bool isReset = false;
+    public bool isRestarting = false;
 
     private int[] useLoop = { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50 };
     public List<GameObject> vehicles = new List<GameObject>();
@@ -166,9 +167,22 @@ public class AIController : MonoBehaviour
         public List<PairList> hard = new List<PairList>();
     }
 
+    public struct RestartList
+    {
+        public Vector2 vehiclesPos;
+        public Vector2[] vehiclesAxes;
+
+        public RestartList(pos, axes)
+        {
+            vehiclesPos = pos;
+            vehiclesAxes = axes;
+        }
+    }
+
     public CalculationResult CR;
     public FutureCourseInfo FCI;
     public List<FutureCourseInfo> FCIInfo = new List<FutureCourseInfo>();
+    public List<RestartList> RL = new List<RestartList>();
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -182,7 +196,7 @@ public class AIController : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (isStart && !isBreak)
+        if (isStart && !isBreak && !isRestarting)
         {
             Vector2 vehiclePos = newVehiclePos;
             Vector2[] vehicleAxes = new Vector2[2];
@@ -259,8 +273,21 @@ public class AIController : MonoBehaviour
         isStop = true;
     }
 
+    private void ResetAI()
+    {
+        transform.position = new Vector3(5.0f, 0.0f, -53.0f);
+        transform.rotation = Quaternion.Euler(0, 0, 0);
+        if (isReset)
+        {
+            gameObject.SetActive(true);
+            isReset = false;
+        }
+        Startcoroutine(RestartAI);
+    }
+
     IEnumerator restartAI()
     {
+        RL.Clear();
         FCIInfo.Clear();
 
         rb.isKinematic = true;
@@ -303,19 +330,6 @@ public class AIController : MonoBehaviour
             }
             yield return null;
         }
-    }
-
-    private void ResetAI()
-    {
-        transform.position = new Vector3(5.0f, 0.0f, -53.0f);
-        transform.rotation = Quaternion.Euler(0, 0, 0);
-        if (isReset)
-        {
-            gameObject.SetActive(true);
-            isReset = false;
-            Startcoroutine(restartAI);
-        }
-        else InitStart();
     }
 
     private void CalculationCourse()
