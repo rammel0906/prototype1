@@ -236,7 +236,7 @@ public class AIController : MonoBehaviour
     IEnumerator PlayerMovement()
     {
         yield return new WaitForFixedUpdate();
-        for (int i = 0; i < FCIInfo.Count; i++)
+        for (int i = 0; i <= FCIInfo.Count; i++)
         {
             var f = FCIInfo[i];
             float elapsed = 0.0f;
@@ -259,19 +259,6 @@ public class AIController : MonoBehaviour
         isStop = true;
     }
 
-    private void ResetAI()
-    {
-        transform.position = new Vector3(5.0f, 0.0f, -53.0f);
-        transform.rotation = Quaternion.Euler(0, 0, 0);
-        if (isReset)
-        {
-            gameObject.SetActive(true);
-            isReset = false;
-            Startcoroutine(restartAI);
-        }
-        else InitStart();
-    }
-
     IEnumerator restartAI()
     {
         FCIInfo.Clear();
@@ -288,7 +275,7 @@ public class AIController : MonoBehaviour
         playerAxes[1] = new Vector2(transform.forward.x, transform.forward.z);
         float playerAngle = transform.eulerAngles.y;
 
-        for(int i = 0; i <vehicles.Count; i++)
+        for(int i = 0; i <= vehicles.Count; i++)
         {    
             Vector2 vehiclePos = new Vector2(vehicles[i].transform.position.x, vehicles[i].transform.position.z);
             if (i > 0)
@@ -307,7 +294,6 @@ public class AIController : MonoBehaviour
             else
             CR = new CalculationResult
             (CR.fPP, CR.fPAx, CR.fPA, vehiclePos, vehicleAxes);
-            
 
             CalculationCourse();
             if (!isRunning)
@@ -315,8 +301,21 @@ public class AIController : MonoBehaviour
                 StartCoroutine(PlayerMovement());
                 isRunning = true;
             }
+            yield return null;
         }
-        isRunning = false;
+    }
+
+    private void ResetAI()
+    {
+        transform.position = new Vector3(5.0f, 0.0f, -53.0f);
+        transform.rotation = Quaternion.Euler(0, 0, 0);
+        if (isReset)
+        {
+            gameObject.SetActive(true);
+            isReset = false;
+            Startcoroutine(restartAI);
+        }
+        else InitStart();
     }
 
     private void CalculationCourse()
