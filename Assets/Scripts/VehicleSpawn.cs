@@ -168,7 +168,7 @@ public class VehicleSpawn : MonoBehaviour
             newVehicleAxes[0] = new Vector2(newVehicle.transform.right.x, newVehicle.transform.right.z);
             newVehicleAxes[1] = new Vector2(newVehicle.transform.forward.x, newVehicle.transform.forward.z);
             
-            scriptA.RL.Add(newVehiclePos, newVehicleAxes);
+            scriptA.RL.Add(new RestartList(newVehiclePos, newVehicleAxes));
         }
 
         scriptA.newVehicle = newVehicle;
