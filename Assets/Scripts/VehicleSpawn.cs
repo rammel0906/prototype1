@@ -155,24 +155,23 @@ public class VehicleSpawn : MonoBehaviour
         newVehicle.AddComponent<VehicleController>().scriptA = scriptA;
 
         Vector2 newVehiclePos = new Vector2(newVehicle.transform.position.x, newVehicle.transform.position.z);
-        if (scriptA.newVehicle != null && !isRestarting)
+        if (scriptA.newVehicle != null && !scriptA.isRestarting)
         {
-            newVehiclePos.y = scriptA.newVehicle.transform.position.z + Mathf.Abs(scriptA.newVehicle.transform.position.z - newVehiclePos.y);
+            newVehiclePos.y = scriptA.CR.fVP.y + Mathf.Abs(scriptA.newVehicle.transform.position.z - newVehiclePos.y);
             scriptA.newVehiclePos = newVehiclePos;
         }
-        else if (isRestarting)
+        else if (scriptA.isRestarting)
         {
             int index = scriptA.RL.Count - 1;
-            newVehiclePos.y = scriptA.RL.vehiclesPos[index].y + Mathf.Abs(scriptA.newVehicle.transform.position.z - newVehiclePos.y);
+            newVehiclePos.y = scriptA.RL[index].vehiclesPos.y + Mathf.Abs(scriptA.newVehicle.transform.position.z - newVehiclePos.y);
             Vector2[] newVehicleAxes = new Vector2[2];
             newVehicleAxes[0] = new Vector2(newVehicle.transform.right.x, newVehicle.transform.right.z);
             newVehicleAxes[1] = new Vector2(newVehicle.transform.forward.x, newVehicle.transform.forward.z);
             
-            scriptA.RL.Add(new RestartList(newVehiclePos, newVehicleAxes));
+            scriptA.RL.Add(new AIController.RestartList(newVehiclePos, newVehicleAxes));
         }
 
         scriptA.newVehicle = newVehicle;
-        scriptA.vehicles.RemoveAll(objects => objects == null);
         scriptA.vehicles.Add(newVehicle);
         scriptA.isStart = true;
     }

@@ -16,6 +16,8 @@ public class AIController : MonoBehaviour
     public GameObject newVehicle;
     public Vector2 newVehiclePos;
 
+    public int FCIIndex = 0;
+    public float elapsed = 0.0f;
     public float dt;
 
     public GameObject cube;
@@ -24,7 +26,6 @@ public class AIController : MonoBehaviour
     public GameObject cube3;
     public GameObject cube4;
     public GameObject cube5;
-    public GameObject cube6;
 
     public bool isStart = false;
     public bool isBreak = false;
@@ -32,7 +33,12 @@ public class AIController : MonoBehaviour
     public bool isReset = false;
     public bool isRestarting = false;
 
+    public int Easy = 0;
+    public int normal = 0;
+    public int Hard = 0;
+
     private int[] useLoop = { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50 };
+
     public List<GameObject> vehicles = new List<GameObject>();
 
     [System.Serializable]
@@ -78,7 +84,6 @@ public class AIController : MonoBehaviour
             }
         }
     }
-    [System.Serializable]
     public struct OBB2D_XZ
     {
         public Vector2 center;
@@ -92,7 +97,7 @@ public class AIController : MonoBehaviour
             axes[0] = nextCRAxes[0].normalized;
             axes[1] = nextCRAxes[1].normalized;
             Vector3 size = Vector3.Scale(box.size, box.transform.lossyScale);
-            extents = new Vector2((size.x * 1.01f) * 0.5f, (size.z * 1.01f) * 0.5f);
+            extents = new Vector2((size.x * 1.1f) * 0.5f, (size.z * 1.1f) * 0.5f);
         }
     }
     public static class SAT2D_XZ
@@ -151,13 +156,13 @@ public class AIController : MonoBehaviour
     [System.Serializable]
     public struct PairList
     {
-        public CalculationResult nextCR;
-        public FutureCourseInfo nextFCI;
+        public CalculationResult CR;
+        public FutureCourseInfo FCI;
 
         public PairList(CalculationResult cr, FutureCourseInfo fci)
         {
-            nextCR = cr;
-            nextFCI = fci;
+            CR = cr;
+            FCI = fci;
         }
     }
     public class SelectedFilter
@@ -180,8 +185,7 @@ public class AIController : MonoBehaviour
     }
 
     public CalculationResult CR;
-    public FutureCourseInfo FCI;
-    public List<FutureCourseInfo> FCIInfo = new List<FutureCourseInfo>();
+    public List<FutureCourseInfo> FCI = new List<FutureCourseInfo>();
     public List<RestartList> RL = new List<RestartList>();
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -213,7 +217,12 @@ public class AIController : MonoBehaviour
 
         if (transform.position.y <= -7.0f) ResetAI();
     }
-    
+
+    void FixedUpdate()
+    {
+        if (!isStop)PlayerMovement();
+    }
+
     void OnDisable()
     {
         isReset = true;
@@ -236,41 +245,45 @@ public class AIController : MonoBehaviour
         CR = new CalculationResult
         (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes);
 
-        FCIInfo.Clear();
+        FCI.Clear();
 
         rb.isKinematic = true;
         isBreak = false;
         isStop = false;
 
         CalculationCourse();
-
-        StartCoroutine(PlayerMovement());
     }
 
-    IEnumerator PlayerMovement()
+    private void PlayerMovement()
     {
-        yield return new WaitForFixedUpdate();
-        for (int i = 0; i < FCIInfo.Count; i++)
+        var f = FCI[FCIIndex];
+        if (elapsed < f.inputTime)
         {
-            var f = FCIInfo[i];
-            float elapsed = 0.0f;
-            while (elapsed < f.inputTime)
+            dt = Mathf.Min(Time.fixedDeltaTime, f.inputTime - elapsed);
+
+            transform.Translate(Vector3.forward * (playerSpeed * dt));
+
+            if (f.processSelected == 2 || f.processSelected == 3)
             {
-                dt = Mathf.Min(Time.fixedDeltaTime, f.inputTime - elapsed);
+                transform.Rotate(Vector3.up * ((turnSpeed * f.keyInput) * dt));
+            }
 
-                transform.Translate(Vector3.forward * (playerSpeed * dt));
+            elapsed += dt;
 
-                if (f.processSelected == 2 || f.processSelected == 3)
+            if (elapsed >= f.inputTime)
+            {
+                if (FCIIndex < FCI.Count - 1)
                 {
-                    transform.Rotate(Vector3.up * ((turnSpeed * f.keyInput) * dt));
+                    FCIIndex++;
+                    elapsed = 0.0f;
                 }
-
-                elapsed += dt;
-                yield return new WaitForFixedUpdate();
+                else
+                {
+                    rb.isKinematic = false;
+                    isStop = true;
+                }
             }
         }
-        rb.isKinematic = false;
-        isStop = true;
     }
 
     private void ResetAI()
@@ -282,6 +295,7 @@ public class AIController : MonoBehaviour
             gameObject.SetActive(true);
             isReset = false;
         }
+        foreach (var p in GameObject.FindGameObjectsWithTag("AAAA")) Destroy(p);
         StartCoroutine(RestartAI());
     }
 
@@ -291,7 +305,8 @@ public class AIController : MonoBehaviour
         bool isRunning = false;
         
         RL.Clear();
-        FCIInfo.Clear();
+        FCI.Clear();
+        vehicles.RemoveAll(objects => objects == null);
 
         rb.isKinematic = true;
         isBreak = false;
@@ -321,11 +336,7 @@ public class AIController : MonoBehaviour
                 Vector2 critenionAbs = RL[i - 1].vehiclesPos;
                 vehiclePos.y = CR.fVP.y + Mathf.Abs(critenionAbs.y - vehiclePos.y);
             }
-<<<<<<< HEAD
-            Vector2[] vehicleAxes = RL.[i]vehiclesAxes;
-=======
             Vector2[] vehicleAxes = RL[i].vehiclesAxes;
->>>>>>> 4eef956c900a1dc4550e9dd09b7010d38add1629
 
             if (i == 0) 
             CR = new CalculationResult
@@ -337,11 +348,16 @@ public class AIController : MonoBehaviour
             CalculationCourse();
             if (!isRunning)
             {
-                StartCoroutine(PlayerMovement());
+                FCIIndex = 0;
+                elapsed = 0.0f;
+                dt = 0.0f;
+
                 isRunning = true;
             }
             yield return null;
         }
+
+        isRestarting = false;
     }
 
     private void CalculationCourse()
@@ -351,12 +367,12 @@ public class AIController : MonoBehaviour
 
         BoxCollider vehicleBox = newVehicle.GetComponent<BoxCollider>();
 
+        bool isEasy = false;
+        bool isNormal = false;
+        bool isHard = false;
+
         while (!CR.isEnd && !isBreak)
         {
-            List<PairList> nextPL = new List<PairList>();
-            List<PairList> PL = new List<PairList>();
-            List<int> nextFutureProcess = new List<int> { 1, 2, 3 };
-
             SelectedFilter filter = new SelectedFilter();
             var rules = new[]
             {
@@ -397,54 +413,62 @@ public class AIController : MonoBehaviour
                 else return angle >= min || angle <= max;
             }
 
-            futureProcess = 1;
-            futureKey = 1;
-            for (int i = 1; i < 51; i++)
+            List<PairList> nextPL = new List<PairList>();
+            List<PairList> PL = new List<PairList>();
+            List<int> nextFutureProcess = new List<int> { 1, 2, 3 };
+
+            if (nextFutureProcess.Contains(1))
             {
-                float time = i * 0.02f;
+                futureProcess = 1;
+                futureKey = 1;
 
-                Vector2 playerPos = CR.fPP + CR.fPAx[1] * (playerSpeed * time);
-                Vector2 vehiclePos = CR.fVP + CR.fVAx[1] * (vehicleSpeed * time);
-
-                CalculationResult nextCR = new CalculationResult
-                (playerPos, CR.fPAx, CR.fPAn, vehiclePos, CR.fVAx);
-
-                OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, CR.fPAx, playerBox);
-                OBB2D_XZ vehicleOBB = new OBB2D_XZ(vehiclePos, CR.fVAx, vehicleBox);
-
-                bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
-
-                if (nextCR.isValid && !isCollision)
+                for (int i = 1; i < 51; i++)
                 {
-                    foreach (var p in useLoop)
+                    float time = i * 0.02f;
+
+                    Vector2 playerPos = CR.fPP + CR.fPAx[1] * (playerSpeed * time);
+                    Vector2 vehiclePos = CR.fVP + CR.fVAx[1] * (vehicleSpeed * time);
+
+                    CalculationResult nextCR = new CalculationResult
+                    (playerPos, CR.fPAx, CR.fPAn, vehiclePos, CR.fVAx);
+                    FutureCourseInfo nextFCI = new FutureCourseInfo(futureProcess, futureKey, time);
+
+                    OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, CR.fPAx, playerBox);
+                    OBB2D_XZ vehicleOBB = new OBB2D_XZ(vehiclePos, CR.fVAx, vehicleBox);
+
+                    bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+
+                    if (nextCR.isValid && !isCollision)
                     {
-                        if (i == p)
+                        foreach (var p in useLoop)
                         {
-                            FutureCourseInfo nextFCI = new FutureCourseInfo(futureProcess, futureKey, time);
-                            nextPL.Add(new PairList(nextCR, nextFCI));
+                            if (i == p)
+                            {
+                                nextPL.Add(new PairList(nextCR, nextFCI));
 
-                            Vector3 aaa = new Vector3(nextCR.fPP.x, transform.position.y, nextCR.fPP.y);
-                            Quaternion bbb = Quaternion.Euler(0, nextCR.fPAn, 0);
-                            //Instantiate(cube, aaa, bbb);
-                            Vector3 ccc = new Vector3(nextCR.fVP.x, newVehicle.transform.position.y, nextCR.fVP.y);
-                            //Instantiate(cube1, ccc, newVehicle.transform.rotation);
+                                Vector3 aaa = new Vector3(nextCR.fPP.x, transform.position.y, nextCR.fPP.y);
+                                Quaternion bbb = Quaternion.Euler(0, nextCR.fPAn, 0);
+                                Instantiate(cube, aaa, bbb);
+                                Vector3 ccc = new Vector3(nextCR.fVP.x, newVehicle.transform.position.y, nextCR.fVP.y);
+                                Instantiate(cube1, ccc, newVehicle.transform.rotation);
 
-                            break;
+                                break;
+                            }
                         }
                     }
-                }
-                else
-                {
-                    if (isCollision)
+                    else
                     {
-                        nextPL.Clear();
-                        Vector3 sss = new Vector3(playerPos.x, transform.position.y, playerPos.y);
-                        Quaternion ttt = Quaternion.Euler(0, nextCR.fPAn, 0);
-                        //Instantiate(cube3, sss, ttt);
-                        Vector3 fff = new Vector3(vehiclePos.x, newVehicle.transform.position.y + 1f, vehiclePos.y);
-                        //Instantiate(cube5, fff, newVehicle.transform.rotation);
+                        if (isCollision)
+                        {
+                            nextPL.Clear();
+                            Vector3 sss = new Vector3(playerPos.x, transform.position.y, playerPos.y);
+                            Quaternion ttt = Quaternion.Euler(0, nextCR.fPAn, 0);
+                            Instantiate(cube3, sss, ttt);
+                            Vector3 fff = new Vector3(vehiclePos.x, newVehicle.transform.position.y + 1f, vehiclePos.y);
+                            Instantiate(cube5, fff, newVehicle.transform.rotation);
+                        }
+                        break;
                     }
-                    break;
                 }
             }
             foreach (var p in nextPL) PL.Add(p);
@@ -453,13 +477,21 @@ public class AIController : MonoBehaviour
             {
                 if (rotation == 0)
                 {
-                    futureProcess = 2;
-                    futureKey = 1;
+                    if (nextFutureProcess.Contains(2))
+                    {
+                        futureProcess = 2;
+                        futureKey = 1;
+                    }
+                    else continue;
                 }
                 else if (rotation == 1)
                 {
-                    futureProcess = 3;
-                    futureKey = -1;
+                    if (nextFutureProcess.Contains(3))
+                    {
+                        futureProcess = 3;
+                        futureKey = -1;
+                    }
+                    else break;
                 }
 
                 for (int i = 1; i < 26; i++)
@@ -488,6 +520,7 @@ public class AIController : MonoBehaviour
 
                     CalculationResult nextCR = new CalculationResult
                     (playerPos, playerAxes, angleDeg, vehiclePos, CR.fVAx);
+                    FutureCourseInfo nextFCI = new FutureCourseInfo(futureProcess, futureKey, time);
 
                     OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, playerAxes, playerBox);
                     OBB2D_XZ vehicleOBB = new OBB2D_XZ(vehiclePos, CR.fVAx, vehicleBox);
@@ -500,14 +533,13 @@ public class AIController : MonoBehaviour
                         {
                             if (i == p)
                             {
-                                FutureCourseInfo nextFCI = new FutureCourseInfo(futureProcess, futureKey, time);
                                 nextPL.Add(new PairList(nextCR, nextFCI));
 
                                 Vector3 aaa = new Vector3(nextCR.fPP.x, transform.position.y, nextCR.fPP.y);
                                 Quaternion bbb = Quaternion.Euler(0, nextCR.fPAn, 0);
-                                //Instantiate(cube, aaa, bbb);
+                                Instantiate(cube, aaa, bbb);
                                 Vector3 ccc = new Vector3(nextCR.fVP.x, newVehicle.transform.position.y, nextCR.fVP.y);
-                                //Instantiate(cube1, ccc, newVehicle.transform.rotation);
+                                Instantiate(cube1, ccc, newVehicle.transform.rotation);
 
                                 break;
                             }
@@ -520,9 +552,9 @@ public class AIController : MonoBehaviour
                             nextPL.Clear();
                             Vector3 sss = new Vector3(playerPos.x, transform.position.y, playerPos.y);
                             Quaternion ttt = Quaternion.Euler(0, angleDeg, 0);
-                            //Instantiate(cube3, sss, ttt);
+                            Instantiate(cube3, sss, ttt);
                             Vector3 fff = new Vector3(vehiclePos.x, newVehicle.transform.position.y + 1f, vehiclePos.y);
-                            //Instantiate(cube5, fff, newVehicle.transform.rotation);
+                            Instantiate(cube5, fff, newVehicle.transform.rotation);
                         }
                         break;
                     }
@@ -535,13 +567,13 @@ public class AIController : MonoBehaviour
             {
                 Vector3 aaa = new Vector3(CR.fPP.x, transform.position.y, CR.fPP.y);
                 Quaternion bbb = Quaternion.Euler(0, CR.fPAn, 0);
-                //Instantiate(cube4, aaa, bbb);
+                Instantiate(cube4, aaa, bbb);
                 foreach (var x in PL.Select((p, i) => (Item: p, Index: i)))
                 {
                     foreach (var rule in rules)
                     {
-                        if (x.Item.nextCR.fPP.x >= rule.MinX && x.Item.nextCR.fPP.x <= rule.MaxX
-                            && angleRange(x.Item.nextCR.fPAn, rule.MinAngle, rule.MaxAngle))
+                        if (x.Item.CR.fPP.x >= rule.MinX && x.Item.CR.fPP.x <= rule.MaxX
+                            && angleRange(x.Item.CR.fPAn, rule.MinAngle, rule.MaxAngle))
                         {
                             rule.Target.Add(x.Item);
                             break;
@@ -553,6 +585,7 @@ public class AIController : MonoBehaviour
                 int normalPro = 0; // normalProbability
                 int hardPro = 0; // hardProbability
                 int rePro = Random.Range(0, 101); // resultProbability
+
                 switch (filter.easy.Count, filter.normal.Count, filter.hard.Count)
                 {
                     case ( > 0, 0, 0):
@@ -603,40 +636,44 @@ public class AIController : MonoBehaviour
                 if (rePro <= easyPro && filter.easy.Count != 0)
                 {
                     int randomIndex = Random.Range(0, filter.easy.Count);
-                    CR = filter.easy[randomIndex].nextCR;
-                    FCI = filter.easy[randomIndex].nextFCI;
-                    FCIInfo.Add(filter.easy[randomIndex].nextFCI);
+                    int index = filter.easy.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
+                    CR = filter.easy[index].CR;
+                    FCI.Add(filter.easy[index].FCI);
+                    isEasy = true;
+                    isNormal = false;
+                    isHard = false;
                 }
                 else if (rePro <= normalPro && filter.normal.Count != 0)
                 {
                     int randomIndex = Random.Range(0, filter.normal.Count);
-                    CR = filter.normal[randomIndex].nextCR;
-                    FCI = filter.normal[randomIndex].nextFCI;
-                    FCIInfo.Add(filter.normal[randomIndex].nextFCI);
+                    int index = filter.normal.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
+                    CR = filter.normal[index].CR;
+                    FCI.Add(filter.normal[index].FCI);
+                    isEasy = false;
+                    isNormal = true;
+                    isHard = false;
                 }
                 else if (rePro <= hardPro && filter.hard.Count != 0)
                 {
                     int randomIndex = Random.Range(0, filter.hard.Count);
-                    CR = filter.hard[randomIndex].nextCR;
-                    FCI = filter.hard[randomIndex].nextFCI;
-                    FCIInfo.Add(filter.hard[randomIndex].nextFCI);
-                }
-                if (CR.isEnd)
-                {
-                    Vector3 zzz = new Vector3(CR.fPP.x, transform.position.y, CR.fPP.y);
-                    Quaternion vvv = Quaternion.Euler(0, CR.fPAn, 0);
-                    //Instantiate(cube6, zzz, vvv);
-                    Vector3 ccc = new Vector3(CR.fVP.x, newVehicle.transform.position.y, CR.fVP.y);
-                    //Instantiate(cube6, ccc, newVehicle.transform.rotation);
+                    CR = filter.hard[randomIndex].CR;
+                    FCI.Add(filter.hard[randomIndex].FCI);
+                    isEasy = false;
+                    isNormal = false;
+                    isHard = true;
                 }
             }
             if (PL.Count == 0)
             {
                 isBreak = true;
 
+                if (isEasy) Easy += 1;
+                else if (isNormal) normal += 1;
+                else if (isHard) Hard += 1;
                 Vector3 aaa = new Vector3(CR.fPP.x, transform.position.y + 1f, CR.fPP.y);
                 Quaternion bbb = Quaternion.Euler(0, CR.fPAn, 0);
-                //Instantiate(cube2, aaa, bbb);
+                Instantiate(cube2, aaa, bbb);
+
             }
         }
         isStart = false;
