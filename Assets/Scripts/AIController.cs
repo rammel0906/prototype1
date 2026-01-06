@@ -172,7 +172,7 @@ public class AIController : MonoBehaviour
         public Vector2 vehiclesPos;
         public Vector2[] vehiclesAxes;
 
-        public RestartList(pos, axes)
+        public RestartList(Vector2 pos, Vector2[] axes)
         {
             vehiclesPos = pos;
             vehiclesAxes = axes;
@@ -282,10 +282,10 @@ public class AIController : MonoBehaviour
             gameObject.SetActive(true);
             isReset = false;
         }
-        Startcoroutine(RestartAI);
+        StartCoroutine(RestartAI());
     }
 
-    IEnumerator restartAI()
+    IEnumerator RestartAI()
     {
         isRestarting = true;
         bool isRunning = false;
@@ -304,7 +304,7 @@ public class AIController : MonoBehaviour
             axes[0] = new Vector2(p.transform.right.x, p.transform.right.z);
             axes[1] = new Vector2(p.transform.forward.x, p.transform.forward.z);
 
-            RL.Add(pos, axes);
+            RL.Add(new RestartList(pos, axes));
         }
         
         Vector2 playerPos = new Vector2(transform.position.x, transform.position.z);
@@ -321,7 +321,11 @@ public class AIController : MonoBehaviour
                 Vector2 critenionAbs = RL[i - 1].vehiclesPos;
                 vehiclePos.y = CR.fVP.y + Mathf.Abs(critenionAbs.y - vehiclePos.y);
             }
+<<<<<<< HEAD
             Vector2[] vehicleAxes = RL.[i]vehiclesAxes;
+=======
+            Vector2[] vehicleAxes = RL[i].vehiclesAxes;
+>>>>>>> 4eef956c900a1dc4550e9dd09b7010d38add1629
 
             if (i == 0) 
             CR = new CalculationResult
