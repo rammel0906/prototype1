@@ -22,7 +22,7 @@ public class ResetGame : MonoBehaviour
         if (collider.gameObject.CompareTag("Player"))
         {
             goalText.SetActive(true);
-            Invoke("ResetSCcene", 1.0f);
+            Invoke("ResetSCcene", 0.7f);
         }
     }
 

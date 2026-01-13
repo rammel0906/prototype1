@@ -26,7 +26,8 @@ public class VehicleSpawn : MonoBehaviour
     public float distance = 100.0f;
 
     public float newVehicleZ;
-    private float[] intervalRange = { 30.0f, 60.0f, 85.0f };
+    private float[] intervalRange = { 40.0f, 55.0f, 70.0f };
+    public float interval = 0.0f;
 
     private GameObject vehicle;
     private Vector3 lanePos;
@@ -34,6 +35,7 @@ public class VehicleSpawn : MonoBehaviour
     private GameObject newVehicle;
 
     private bool isWaiting = false;
+    private bool isGenerating = false;
     private bool isFixedSpawnPos = false;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -83,24 +85,16 @@ public class VehicleSpawn : MonoBehaviour
         if (newVehicle != null)
         {
             newVehicleZ = spawnBaseZ - newVehicle.transform.position.z;
+            if (!isGenerating) 
+            {
+                interval = intervalRange[Random.Range(0, intervalRange.Length)];
+                isGenerating = true;
+            }
 
-            if (newVehicleZ >= intervalRange[Random.Range(0, intervalRange.Length)])
+            if (newVehicleZ >= interval)
             {
                 SpawnVehicle();
-            }
-        }
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.gameObject.CompareTag("Player"))
-        {
-            if (other.gameObject == headPlayer)
-            {
-                players.Remove(other.gameObject);
-                headPlayer = players.Where(p => p != null).OrderByDescending(p => Mathf.Round(p.transform.position.z * 10f) / 10f).FirstOrDefault();
-                headPlayerLog = headPlayer;
-                isFixedSpawnPos = true;
+                isGenerating = false;
             }
         }
     }
@@ -151,8 +145,9 @@ public class VehicleSpawn : MonoBehaviour
         {
             lanePos = new Vector3(7.5f, 0f, spawnBaseZ);
         }
+        //vehicle = ute;
         newVehicle = Instantiate(vehicle, lanePos, laneRot);
-        newVehicle.AddComponent<VehicleController>().scriptA = scriptA;
+        newVehicle.AddComponent<VehicleController>();
 
         Vector2 newVehiclePos = new Vector2(newVehicle.transform.position.x, newVehicle.transform.position.z);
         if (scriptA.newVehicle != null && !scriptA.isRestarting)
@@ -162,13 +157,13 @@ public class VehicleSpawn : MonoBehaviour
         }
         else if (scriptA.isRestarting)
         {
-            int index = scriptA.RL.Count - 1;
-            newVehiclePos.y = scriptA.RL[index].vehiclesPos.y + Mathf.Abs(scriptA.newVehicle.transform.position.z - newVehiclePos.y);
+            int index = scriptA.RSL.Count - 1;
+            newVehiclePos.y = scriptA.RSL[index].vehiclesPos.y + Mathf.Abs(scriptA.newVehicle.transform.position.z - newVehiclePos.y);
             Vector2[] newVehicleAxes = new Vector2[2];
             newVehicleAxes[0] = new Vector2(newVehicle.transform.right.x, newVehicle.transform.right.z);
             newVehicleAxes[1] = new Vector2(newVehicle.transform.forward.x, newVehicle.transform.forward.z);
             
-            scriptA.RL.Add(new AIController.RestartList(newVehiclePos, newVehicleAxes));
+            scriptA.RSL.Add(new AIController.RestartList(newVehiclePos, newVehicleAxes));
         }
 
         scriptA.newVehicle = newVehicle;

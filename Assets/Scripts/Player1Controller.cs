@@ -118,7 +118,7 @@ public class Player1Controller : MonoBehaviour
 
     private void ResetPlayer()
     {
-        player1.transform.position = new Vector3(-5.0f, 0.0f, -53.0f);
+        player1.transform.position = new Vector3(-5.0f, 0.0f, -60.0f);
         player1.transform.rotation = Quaternion.Euler(0, 0, 0);
 
         if (isReset)

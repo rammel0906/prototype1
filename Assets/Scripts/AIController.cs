@@ -16,6 +16,8 @@ public class AIController : MonoBehaviour
     public GameObject newVehicle;
     public Vector2 newVehiclePos;
 
+    public int returnCount = 0;
+
     public int FCIIndex = 0;
     public float elapsed = 0.0f;
     public float dt;
@@ -26,16 +28,14 @@ public class AIController : MonoBehaviour
     public GameObject cube3;
     public GameObject cube4;
     public GameObject cube5;
+    public GameObject cube42;
+    public GameObject cube52;
 
     public bool isStart = false;
     public bool isBreak = false;
     public bool isStop = false;
     public bool isReset = false;
     public bool isRestarting = false;
-
-    public int Easy = 0;
-    public int normal = 0;
-    public int Hard = 0;
 
     private int[] useLoop = { 5, 10, 15, 20, 25, 30, 35, 40, 45, 50 };
 
@@ -90,14 +90,14 @@ public class AIController : MonoBehaviour
         public Vector2[] axes;
         public Vector2 extents;
 
-        public OBB2D_XZ(Vector2 nextCRCenter,Vector2[] nextCRAxes, BoxCollider box)
+        public OBB2D_XZ(Vector2 CRCenter,Vector2[] CRAxes, BoxCollider box)
         {
-            center = nextCRCenter;
+            center = CRCenter;
             axes = new Vector2[2];
-            axes[0] = nextCRAxes[0].normalized;
-            axes[1] = nextCRAxes[1].normalized;
+            axes[0] = CRAxes[0].normalized;
+            axes[1] = CRAxes[1].normalized;
             Vector3 size = Vector3.Scale(box.size, box.transform.lossyScale);
-            extents = new Vector2((size.x * 1.1f) * 0.5f, (size.z * 1.1f) * 0.5f);
+            extents = new Vector2((size.x * 1.15f) * 0.5f, (size.z * 1.15f) * 0.5f);
         }
     }
     public static class SAT2D_XZ
@@ -165,13 +165,24 @@ public class AIController : MonoBehaviour
             FCI = fci;
         }
     }
+    [System.Serializable]
+    public struct ReturnList
+    {
+        public PairList PL;
+        public List<int> process;
+
+        public ReturnList(PairList pl, List<int> selectProcess)
+        {
+            PL = pl;
+            process = new List<int>(selectProcess);
+        }
+    }
     public class SelectedFilter
     {
         public List<PairList> easy = new List<PairList>();
         public List<PairList> normal = new List<PairList>();
         public List<PairList> hard = new List<PairList>();
     }
-
     public struct RestartList
     {
         public Vector2 vehiclesPos;
@@ -186,7 +197,9 @@ public class AIController : MonoBehaviour
 
     public CalculationResult CR;
     public List<FutureCourseInfo> FCI = new List<FutureCourseInfo>();
-    public List<RestartList> RL = new List<RestartList>();
+    public List<ReturnList> RTL = new List<ReturnList>();
+
+    public List<RestartList> RSL = new List<RestartList>();
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -202,13 +215,12 @@ public class AIController : MonoBehaviour
     {
         if (isStart && !isBreak && !isRestarting)
         {
-            Vector2 vehiclePos = newVehiclePos;
             Vector2[] vehicleAxes = new Vector2[2];
             vehicleAxes[0] = new Vector2(newVehicle.transform.right.x, newVehicle.transform.right.z);
             vehicleAxes[1] = new Vector2(newVehicle.transform.forward.x, newVehicle.transform.forward.z);
 
             CR = new CalculationResult
-            (CR.fPP, CR.fPAx, CR.fPAn, vehiclePos, vehicleAxes);
+            (CR.fPP, CR.fPAx, CR.fPAn, newVehiclePos, vehicleAxes);
 
             CalculationCourse();
         }
@@ -220,7 +232,7 @@ public class AIController : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (!isStop)PlayerMovement();
+        if (!isStop)PlayerMovement(Time.fixedDeltaTime);
     }
 
     void OnDisable()
@@ -254,21 +266,33 @@ public class AIController : MonoBehaviour
         CalculationCourse();
     }
 
-    private void PlayerMovement()
+    private void PlayerMovement(float dt)
     {
-        var f = FCI[FCIIndex];
-        if (elapsed < f.inputTime)
-        {
-            dt = Mathf.Min(Time.fixedDeltaTime, f.inputTime - elapsed);
+        float remaining = dt;
 
-            transform.Translate(Vector3.forward * (playerSpeed * dt));
+        while (remaining > 0.0f)
+        {
+            if (FCIIndex >= FCI.Count)
+            {
+                rb.isKinematic = false;
+                isStop = true;
+                return;
+            }
+            var f = FCI[FCIIndex];
+
+            float toInputEnd = f.inputTime - elapsed;
+
+            float stepTime = Mathf.Min(remaining, toInputEnd);
+
+            transform.Translate(Vector3.forward * (playerSpeed * stepTime));
 
             if (f.processSelected == 2 || f.processSelected == 3)
             {
-                transform.Rotate(Vector3.up * ((turnSpeed * f.keyInput) * dt));
+                transform.Rotate(Vector3.up * ((turnSpeed * f.keyInput) * stepTime));
             }
 
-            elapsed += dt;
+            elapsed += stepTime;
+            remaining -= stepTime;
 
             if (elapsed >= f.inputTime)
             {
@@ -281,6 +305,7 @@ public class AIController : MonoBehaviour
                 {
                     rb.isKinematic = false;
                     isStop = true;
+                    return;
                 }
             }
         }
@@ -288,7 +313,7 @@ public class AIController : MonoBehaviour
 
     private void ResetAI()
     {
-        transform.position = new Vector3(5.0f, 0.0f, -53.0f);
+        transform.position = new Vector3(5.0f, 0.0f, -60.0f);
         transform.rotation = Quaternion.Euler(0, 0, 0);
         if (isReset)
         {
@@ -304,8 +329,9 @@ public class AIController : MonoBehaviour
         isRestarting = true;
         bool isRunning = false;
         
-        RL.Clear();
+        RSL.Clear();
         FCI.Clear();
+        RTL.Clear();
         vehicles.RemoveAll(objects => objects == null);
 
         rb.isKinematic = true;
@@ -319,7 +345,7 @@ public class AIController : MonoBehaviour
             axes[0] = new Vector2(p.transform.right.x, p.transform.right.z);
             axes[1] = new Vector2(p.transform.forward.x, p.transform.forward.z);
 
-            RL.Add(new RestartList(pos, axes));
+            RSL.Add(new RestartList(pos, axes));
         }
         
         Vector2 playerPos = new Vector2(transform.position.x, transform.position.z);
@@ -330,13 +356,13 @@ public class AIController : MonoBehaviour
 
         for(int i = 0; i < vehicles.Count; i++)
         {    
-            Vector2 vehiclePos = RL[i].vehiclesPos;
+            Vector2 vehiclePos = RSL[i].vehiclesPos;
             if (i > 0)
             {
-                Vector2 critenionAbs = RL[i - 1].vehiclesPos;
+                Vector2 critenionAbs = RSL[i - 1].vehiclesPos;
                 vehiclePos.y = CR.fVP.y + Mathf.Abs(critenionAbs.y - vehiclePos.y);
             }
-            Vector2[] vehicleAxes = RL[i].vehiclesAxes;
+            Vector2[] vehicleAxes = RSL[i].vehiclesAxes;
 
             if (i == 0) 
             CR = new CalculationResult
@@ -362,21 +388,26 @@ public class AIController : MonoBehaviour
 
     private void CalculationCourse()
     {
+        CalculationResult tempCR = CR;
+
+        Vector3 aaagh = new Vector3(CR.fPP.x, transform.position.y + 1, CR.fPP.y);
+        Quaternion bbbgh = Quaternion.Euler(0, CR.fPAn, 0);
+        Instantiate(cube4, aaagh, bbbgh);
+
         int futureProcess = 0;
         int futureKey = 0;
 
-        BoxCollider vehicleBox = newVehicle.GetComponent<BoxCollider>();
+        int returnCount = 0;
 
-        bool isEasy = false;
-        bool isNormal = false;
-        bool isHard = false;
+        List<int> nextFutureProcess = new List<int> { 1, 2, 3 };
+
+        BoxCollider vehicleBox = newVehicle.GetComponent<BoxCollider>();
 
         while (!CR.isEnd && !isBreak)
         {
             SelectedFilter filter = new SelectedFilter();
             var rules = new[]
             {
-
                 new{MinX = 0.0f, MaxX = 2.5f, MinAngle = 330.0f, MaxAngle = 20.0f, Target = filter.easy},
                 new{MinX = 0.0f, MaxX = 2.5f, MinAngle = 300.0f, MaxAngle = 40.0f, Target = filter.normal},
                 new{MinX = 0.0f, MaxX = 2.5f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = filter.hard},
@@ -406,16 +437,16 @@ public class AIController : MonoBehaviour
 
                 new{MinX = -8.5f, MaxX = -6.5f, MinAngle = 0.0f, MaxAngle = 60.0f, Target = filter.easy},
                 new{MinX = -8.5f, MaxX = -6.5f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = filter.hard}
-            };
+                };
             bool angleRange(float angle, float min, float max)
             {
                 if (min < max) return angle >= min && angle <= max;
                 else return angle >= min || angle <= max;
             }
 
-            List<PairList> nextPL = new List<PairList>();
+            List<PairList> nextPL1 = new List<PairList>();
+            List<PairList> nextPL2 = new List<PairList>();
             List<PairList> PL = new List<PairList>();
-            List<int> nextFutureProcess = new List<int> { 1, 2, 3 };
 
             if (nextFutureProcess.Contains(1))
             {
@@ -438,19 +469,42 @@ public class AIController : MonoBehaviour
 
                     bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
 
-                    if (nextCR.isValid && !isCollision)
+                    vehiclePos = new Vector2(vehiclePos.x, playerPos.y);
+                    vehicleOBB = new OBB2D_XZ(vehiclePos, CR.fVAx, vehicleBox);
+
+                    bool isOverlap = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+
+                    foreach (var p in useLoop)
+                    {
+                        if (i == p)
+                        {
+                            Vector3 aaa = new Vector3(nextCR.fPP.x, transform.position.y, nextCR.fPP.y);
+                            Quaternion bbb = Quaternion.Euler(0, nextCR.fPAn, 0);
+                            Instantiate(cube, aaa, bbb);
+                            Vector3 ccc = new Vector3(nextCR.fVP.x, newVehicle.transform.position.y, nextCR.fVP.y);
+                            Instantiate(cube1, ccc, newVehicle.transform.rotation);
+                        }
+                    }
+
+                    if (nextCR.isValid && !isCollision && !isOverlap)
                     {
                         foreach (var p in useLoop)
                         {
                             if (i == p)
                             {
-                                nextPL.Add(new PairList(nextCR, nextFCI));
+                                nextPL1.Add(new PairList(nextCR, nextFCI));
 
-                                Vector3 aaa = new Vector3(nextCR.fPP.x, transform.position.y, nextCR.fPP.y);
-                                Quaternion bbb = Quaternion.Euler(0, nextCR.fPAn, 0);
-                                Instantiate(cube, aaa, bbb);
-                                Vector3 ccc = new Vector3(nextCR.fVP.x, newVehicle.transform.position.y, nextCR.fVP.y);
-                                Instantiate(cube1, ccc, newVehicle.transform.rotation);
+                                break;
+                            }
+                        }
+                    }
+                    else if (nextCR.isValid && !isCollision && isOverlap)
+                    {
+                        foreach (var p in useLoop)
+                        {
+                            if (i == p)
+                            {
+                                nextPL2.Add(new PairList(nextCR, nextFCI));
 
                                 break;
                             }
@@ -458,21 +512,30 @@ public class AIController : MonoBehaviour
                     }
                     else
                     {
-                        if (isCollision)
+                        if (isCollision || nextPL1.Count == 0 && nextPL2.Count == 0)
                         {
-                            nextPL.Clear();
+                            nextPL1.Clear();
+                            nextPL2.Clear();
+
+                            nextFutureProcess.Remove(1);
+
                             Vector3 sss = new Vector3(playerPos.x, transform.position.y, playerPos.y);
                             Quaternion ttt = Quaternion.Euler(0, nextCR.fPAn, 0);
                             Instantiate(cube3, sss, ttt);
                             Vector3 fff = new Vector3(vehiclePos.x, newVehicle.transform.position.y + 1f, vehiclePos.y);
                             Instantiate(cube5, fff, newVehicle.transform.rotation);
                         }
+
                         break;
                     }
                 }
             }
-            foreach (var p in nextPL) PL.Add(p);
-            nextPL.Clear();
+            if (nextPL1.Count != 0) foreach (var p in nextPL1) PL.Add(p);
+            else foreach (var p in nextPL2) PL.Add(p);
+
+            nextPL1.Clear();
+            nextPL2.Clear();
+
             for (int rotation = 0; rotation < 2; rotation++)
             {
                 if (rotation == 0)
@@ -527,19 +590,42 @@ public class AIController : MonoBehaviour
 
                     bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
 
-                    if (nextCR.isValid && !isCollision)
+                    vehiclePos = new Vector2(vehiclePos.x, playerPos.y);
+                    vehicleOBB = new OBB2D_XZ(vehiclePos, CR.fVAx, vehicleBox);
+
+                    bool isOverlap = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+
+                    foreach (var p in useLoop)
+                    {
+                        if (i == p)
+                        {
+                            Vector3 aaa = new Vector3(nextCR.fPP.x, transform.position.y, nextCR.fPP.y);
+                            Quaternion bbb = Quaternion.Euler(0, nextCR.fPAn, 0);
+                            Instantiate(cube, aaa, bbb);
+                            Vector3 ccc = new Vector3(nextCR.fVP.x, newVehicle.transform.position.y, nextCR.fVP.y);
+                            Instantiate(cube1, ccc, newVehicle.transform.rotation);
+                        }
+                    }
+
+                    if (nextCR.isValid && !isCollision && !isOverlap)
                     {
                         foreach (var p in useLoop)
                         {
                             if (i == p)
                             {
-                                nextPL.Add(new PairList(nextCR, nextFCI));
+                                nextPL1.Add(new PairList(nextCR, nextFCI));
 
-                                Vector3 aaa = new Vector3(nextCR.fPP.x, transform.position.y, nextCR.fPP.y);
-                                Quaternion bbb = Quaternion.Euler(0, nextCR.fPAn, 0);
-                                Instantiate(cube, aaa, bbb);
-                                Vector3 ccc = new Vector3(nextCR.fVP.x, newVehicle.transform.position.y, nextCR.fVP.y);
-                                Instantiate(cube1, ccc, newVehicle.transform.rotation);
+                                break;
+                            }
+                        }
+                    }
+                    else if (nextCR.isValid && !isCollision && isOverlap)
+                    {
+                        foreach (var p in useLoop)
+                        {
+                            if (i == p)
+                            {
+                                nextPL2.Add(new PairList(nextCR, nextFCI));
 
                                 break;
                             }
@@ -547,44 +633,50 @@ public class AIController : MonoBehaviour
                     }
                     else
                     {
-                        if (isCollision)
+                        if (isCollision || nextPL1.Count == 0 && nextPL2.Count == 0)
                         {
-                            nextPL.Clear();
+                            nextPL1.Clear();
+                            nextPL2.Clear();
+
+                            if (rotation == 0) nextFutureProcess.Remove(2);
+                            else if (rotation == 1) nextFutureProcess.Remove(3);
+
                             Vector3 sss = new Vector3(playerPos.x, transform.position.y, playerPos.y);
-                            Quaternion ttt = Quaternion.Euler(0, angleDeg, 0);
+                            Quaternion ttt = Quaternion.Euler(0, nextCR.fPAn, 0);
                             Instantiate(cube3, sss, ttt);
                             Vector3 fff = new Vector3(vehiclePos.x, newVehicle.transform.position.y + 1f, vehiclePos.y);
                             Instantiate(cube5, fff, newVehicle.transform.rotation);
                         }
+
                         break;
                     }
                 }
-                foreach (var p in nextPL) PL.Add(p);
-                nextPL.Clear();
+                if (nextPL1.Count != 0) foreach (var p in nextPL1) PL.Add(p);
+                else foreach (var p in nextPL2) PL.Add(p);
+
+                nextPL1.Clear();
+                nextPL2.Clear();
             }
 
             if (PL.Count != 0)
             {
-                Vector3 aaa = new Vector3(CR.fPP.x, transform.position.y, CR.fPP.y);
-                Quaternion bbb = Quaternion.Euler(0, CR.fPAn, 0);
-                Instantiate(cube4, aaa, bbb);
-                foreach (var x in PL.Select((p, i) => (Item: p, Index: i)))
+                foreach (var p in PL)
                 {
                     foreach (var rule in rules)
                     {
-                        if (x.Item.CR.fPP.x >= rule.MinX && x.Item.CR.fPP.x <= rule.MaxX
-                            && angleRange(x.Item.CR.fPAn, rule.MinAngle, rule.MaxAngle))
+                        if (p.CR.fPP.x >= rule.MinX && p.CR.fPP.x <= rule.MaxX
+                            && angleRange(p.CR.fPAn, rule.MinAngle, rule.MaxAngle))
                         {
-                            rule.Target.Add(x.Item);
+                            rule.Target.Add(p);
                             break;
                         }
                     }
                 }
 
+                int rePro = Random.Range(0, 101); // resultProbability
                 int easyPro = 0; // easyProbability
                 int normalPro = 0; // normalProbability
                 int hardPro = 0; // hardProbability
-                int rePro = Random.Range(0, 101); // resultProbability
 
                 switch (filter.easy.Count, filter.normal.Count, filter.hard.Count)
                 {
@@ -639,9 +731,7 @@ public class AIController : MonoBehaviour
                     int index = filter.easy.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
                     CR = filter.easy[index].CR;
                     FCI.Add(filter.easy[index].FCI);
-                    isEasy = true;
-                    isNormal = false;
-                    isHard = false;
+                    RTL.Add(new ReturnList(filter.easy[index], nextFutureProcess));
                 }
                 else if (rePro <= normalPro && filter.normal.Count != 0)
                 {
@@ -649,31 +739,77 @@ public class AIController : MonoBehaviour
                     int index = filter.normal.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
                     CR = filter.normal[index].CR;
                     FCI.Add(filter.normal[index].FCI);
-                    isEasy = false;
-                    isNormal = true;
-                    isHard = false;
+                    RTL.Add(new ReturnList(filter.normal[index], nextFutureProcess));
                 }
                 else if (rePro <= hardPro && filter.hard.Count != 0)
                 {
-                    int randomIndex = Random.Range(0, filter.hard.Count);
-                    CR = filter.hard[randomIndex].CR;
-                    FCI.Add(filter.hard[randomIndex].FCI);
-                    isEasy = false;
-                    isNormal = false;
-                    isHard = true;
+                    int randomindex = Random.Range(0, filter.hard.Count);
+                    int index = filter.hard.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
+                    CR = filter.hard[randomindex].CR;
+                    FCI.Add(filter.hard[randomindex].FCI);
+                    RTL.Add(new ReturnList(filter.hard[randomindex], nextFutureProcess));
                 }
-            }
-            if (PL.Count == 0)
-            {
-                isBreak = true;
+                if (CR.isEnd)
+                {
+                    Vector3 aaafd = new Vector3(CR.fPP.x, transform.position.y, CR.fPP.y);
+                    Quaternion bbbfd = Quaternion.Euler(0, CR.fPAn, 0);
+                    //Instantiate(cube52, aaafd, bbbfd);
+                    Vector3 fff = new Vector3(CR.fVP.x, newVehicle.transform.position.y, CR.fVP.y);
+                    //Instantiate(cube52, fff, newVehicle.transform.rotation);
+                }
 
-                if (isEasy) Easy += 1;
-                else if (isNormal) normal += 1;
-                else if (isHard) Hard += 1;
-                Vector3 aaa = new Vector3(CR.fPP.x, transform.position.y + 1f, CR.fPP.y);
+                Vector3 aaa = new Vector3(CR.fPP.x, transform.position.y, CR.fPP.y);
                 Quaternion bbb = Quaternion.Euler(0, CR.fPAn, 0);
-                Instantiate(cube2, aaa, bbb);
+                //Instantiate(cube42, aaa, bbb);
 
+                nextFutureProcess = new List<int> { 1, 2, 3 };
+            }
+            else
+            {
+                if (returnCount < 6 && RTL.Count >= 2 && PL.Count != 0)
+                {
+                    returnCount++;
+                    //Debug.Log("<color=green>ReturnCount:</color>" + returnCount);
+                    while (nextFutureProcess.Count == 0)
+                    {
+                        int newRTLIndex = RTL.Count - 1;
+                        int oldRTLIndex = RTL.Count - 2;
+
+                        if (oldRTLIndex >= FCIIndex && !RTL[newRTLIndex].PL.CR.isEnd)
+                        {
+                            if (RTL[oldRTLIndex].PL.CR.isEnd) CR = tempCR;
+                            else CR = RTL[oldRTLIndex].PL.CR;
+
+                            nextFutureProcess = new List<int>(RTL[newRTLIndex].process);
+                            //Debug.Log("newRTLIndex.process:" + string.Join(", ", nextFutureProcess) + "  Remove:" + RTL[newRTLIndex].PL.FCI.processSelected);
+                            nextFutureProcess.Remove(RTL[newRTLIndex].PL.FCI.processSelected);
+                            //if (nextFutureProcess.Count == 0) Debug.Log("<color=yellow>new nextFutureProcess:</color>" + string.Join(", ", nextFutureProcess));
+                            //else Debug.Log("<color=blue>new nextFutureProcess:</color>" + string.Join(", ", nextFutureProcess));
+
+                            RTL.RemoveAt(newRTLIndex);
+                            FCI.RemoveAt(newRTLIndex);
+                        }
+                        else
+                        {
+                            //if (oldRTLIndex < FCIIndex) Debug.LogWarning("FCIIndex‚ªoldRTLIndex‚ð’´‚¦‚½‚½‚ß–ß‚ê‚Ü‚¹‚ñ");
+                            //if (RTL[newRTLIndex].PL.CR.isEnd) Debug.LogWarning("Œ»Ý‚ÌŒvŽZ‚ªÅ‰‚ÌCR‚Ì‚½‚ß–ß‚ê‚Ü‚¹‚ñ");
+                            isBreak = true;
+                            break;
+                        }
+
+                        Vector3 aaa = new Vector3(CR.fPP.x, transform.position.y + 1f, CR.fPP.y);
+                        Quaternion bbb = Quaternion.Euler(0, CR.fPAn, 0);
+                        //Instantiate(cube2, aaa, bbb);
+                    }
+                }
+                else
+                {
+                    isBreak = true;
+
+                    Vector3 aaa = new Vector3(CR.fPP.x, transform.position.y + 1f, CR.fPP.y);
+                    Quaternion bbb = Quaternion.Euler(0, CR.fPAn, 0);
+                    //Instantiate(cube2, aaa, bbb);
+                }
             }
         }
         isStart = false;
