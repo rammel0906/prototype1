@@ -102,8 +102,10 @@ public class AIController : MonoBehaviour
     }
     public static class SAT2D_XZ
     {
-        public static bool CheckOBBvsOBB(OBB2D_XZ a, OBB2D_XZ b)
+        public static float CheckOBBvsOBB(OBB2D_XZ a, OBB2D_XZ b)
         {
+            float MVT = float.MaxValue;
+
             Vector2[] axesToTest = new Vector2[4];
             axesToTest[0] = a.axes[0];
             axesToTest[1] = a.axes[1];
@@ -118,9 +120,13 @@ public class AIController : MonoBehaviour
                 float minB, maxB;
                 ProjectOBBOnAxis(b, axis, out minB, out maxB);
 
-                if (minA > maxB || minB > maxA) return false;
+                float overlap = Mathf.Min(maxA, maxB) - Mathf.Max(minA, minB);
+
+                if (overlap < 0.0f) return 0.0f;
+
+                if (overlap < MVT) MVT = overlap;
             }
-            return true;
+            return MVT;
         }
         private static void ProjectOBBOnAxis(OBB2D_XZ obb, Vector2 axis, out float min, out float max)
         {
@@ -177,11 +183,17 @@ public class AIController : MonoBehaviour
             process = new List<int>(selectProcess);
         }
     }
-    public class SelectedFilter
+    public class avoidanceFilter
     {
-        public List<PairList> easy = new List<PairList>();
-        public List<PairList> normal = new List<PairList>();
-        public List<PairList> hard = new List<PairList>();
+        public List<PairList> fast = new List<PairList>();
+        public List<PairList> medium = new List<PairList>();
+        public List<PairList> slow = new List<PairList>();
+    }
+    public class difficultyFilter
+    {
+        public avoidanceFilter easy = new avoidanceFilter();
+        public avoidanceFilter normal = new avoidanceFilter();
+        public avoidanceFilter hard = new avoidanceFilter();
     }
     public struct RestartList
     {
@@ -405,39 +417,46 @@ public class AIController : MonoBehaviour
 
         while (!CR.isEnd && !isBreak)
         {
-            SelectedFilter filter = new SelectedFilter();
-            var rules = new[]
+            difficultyFilter diffFilter = new difficultyFilter();
+
+            var roadRules = new[]
             {
-                new{MinX = 0.0f, MaxX = 2.5f, MinAngle = 330.0f, MaxAngle = 20.0f, Target = filter.easy},
-                new{MinX = 0.0f, MaxX = 2.5f, MinAngle = 300.0f, MaxAngle = 40.0f, Target = filter.normal},
-                new{MinX = 0.0f, MaxX = 2.5f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = filter.hard},
+                new { MinX = 0.0f, MaxX = 2.5f, MinAngle = 330.0f, MaxAngle = 20.0f, Target = diffFilter.easy },
+                new { MinX = 0.0f, MaxX = 2.5f, MinAngle = 300.0f, MaxAngle = 40.0f, Target = diffFilter.normal },
+                new { MinX = 0.0f, MaxX = 2.5f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
 
-                new{MinX = 2.5f, MaxX = 5.0f, MinAngle = 315.0f, MaxAngle = 20.0f, Target = filter.easy},
-                new{MinX = 2.5f, MaxX = 5.0f, MinAngle = 300.0f, MaxAngle = 360.0f, Target = filter.normal},
-                new{MinX = 2.5f, MaxX = 5.0f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = filter.hard},
+                new { MinX = 2.5f, MaxX = 5.0f, MinAngle = 315.0f, MaxAngle = 20.0f, Target = diffFilter.easy },
+                new { MinX = 2.5f, MaxX = 5.0f, MinAngle = 300.0f, MaxAngle = 360.0f, Target = diffFilter.normal },
+                new { MinX = 2.5f, MaxX = 5.0f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
 
-                new{MinX = 5.0f, MaxX = 6.5f, MinAngle = 320.0f, MaxAngle = 360.0f, Target = filter.easy},
-                new{MinX = 5.0f, MaxX = 6.5f, MinAngle = 0.0f, MaxAngle = 25.0f, Target = filter.normal},
-                new{MinX = 5.0f, MaxX = 6.5f, MinAngle = 275f, MaxAngle = 85.0f, Target = filter.hard},
+                new { MinX = 5.0f, MaxX = 6.5f, MinAngle = 320.0f, MaxAngle = 360.0f, Target = diffFilter.easy },
+                new { MinX = 5.0f, MaxX = 6.5f, MinAngle = 0.0f, MaxAngle = 25.0f, Target = diffFilter.normal },
+                new { MinX = 5.0f, MaxX = 6.5f, MinAngle = 275f, MaxAngle = 85.0f, Target = diffFilter.hard },
 
-                new{MinX = 6.5f, MaxX = 8.5f, MinAngle = 300.0f, MaxAngle = 360.0f, Target = filter.easy},
-                new{MinX = 6.5f, MaxX = 8.5f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = filter.hard},
+                new { MinX = 6.5f, MaxX = 8.5f, MinAngle = 300.0f, MaxAngle = 360.0f, Target = diffFilter.easy },
+                new { MinX = 6.5f, MaxX = 8.5f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
 
-                new{MinX = -2.5f, MaxX = 0.0f, MinAngle = 340.0f, MaxAngle = 30.0f, Target = filter.easy},
-                new{MinX = -2.5f, MaxX = 0.0f, MinAngle = 320.0f, MaxAngle = 85.0f, Target = filter.normal},
-                new{MinX = -2.5f, MaxX = 0.0f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = filter.hard},
+                new { MinX = -2.5f, MaxX = 0.0f, MinAngle = 340.0f, MaxAngle = 30.0f, Target = diffFilter.easy },
+                new { MinX = -2.5f, MaxX = 0.0f, MinAngle = 320.0f, MaxAngle = 85.0f, Target = diffFilter.normal },
+                new { MinX = -2.5f, MaxX = 0.0f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = diffFilter.hard },
 
-                new{MinX = -5.0f, MaxX = -2.5f, MinAngle = 340.0f, MaxAngle = 40.0f, Target = filter.easy},
-                new{MinX = -5.0f, MaxX = -2.5f, MinAngle = 0.0f, MaxAngle = 60.0f, Target = filter.normal},
-                new{MinX = -5.0f, MaxX = -2.5f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = filter.hard},
+                new { MinX = -5.0f, MaxX = -2.5f, MinAngle = 340.0f, MaxAngle = 40.0f, Target = diffFilter.easy },
+                new { MinX = -5.0f, MaxX = -2.5f, MinAngle = 0.0f, MaxAngle = 60.0f, Target = diffFilter.normal },
+                new { MinX = -5.0f, MaxX = -2.5f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = diffFilter.hard },
 
-                new{MinX = -6.5f, MaxX = -5.0f, MinAngle = 0.0f, MaxAngle = 45.0f, Target = filter.easy},
-                new{MinX = -6.5f, MaxX = -5.0f, MinAngle = 335.0f, MaxAngle = 360.0f, Target = filter.normal},
-                new{MinX = -6.5f, MaxX = -5.0f, MinAngle = 275.0f, MaxAngle = 85.0f, Target = filter.hard},
+                new { MinX = -6.5f, MaxX = -5.0f, MinAngle = 0.0f, MaxAngle = 45.0f, Target = diffFilter.easy },
+                new { MinX = -6.5f, MaxX = -5.0f, MinAngle = 335.0f, MaxAngle = 360.0f, Target = diffFilter.normal },
+                new { MinX = -6.5f, MaxX = -5.0f, MinAngle = 275.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
 
-                new{MinX = -8.5f, MaxX = -6.5f, MinAngle = 0.0f, MaxAngle = 60.0f, Target = filter.easy},
-                new{MinX = -8.5f, MaxX = -6.5f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = filter.hard}
-                };
+                new { MinX = -8.5f, MaxX = -6.5f, MinAngle = 0.0f, MaxAngle = 60.0f, Target = diffFilter.easy },
+                new { MinX = -8.5f, MaxX = -6.5f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = diffFilter.hard }
+            };
+            var overlapRules = new[]
+            {
+                new { Subject = diffFilter.easy, MinDiffMVT = 1, MaxDiffMVT = 1, Target = diffFilter.easy.fast },
+                new { Subject = diffFilter.easy, MinDiffMVT = 1, MaxDiffMVT = 1, Target = diffFilter.easy.fast },
+                new { Subject = diffFilter.easy, MinDiffMVT = 1, MaxDiffMVT = 1, Target = diffFilter.easy.medium },
+            };
             bool angleRange(float angle, float min, float max)
             {
                 if (min < max) return angle >= min && angle <= max;
@@ -467,12 +486,13 @@ public class AIController : MonoBehaviour
                     OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, CR.fPAx, playerBox);
                     OBB2D_XZ vehicleOBB = new OBB2D_XZ(vehiclePos, CR.fVAx, vehicleBox);
 
-                    bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+                    bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB) >= 0.0f;
 
-                    vehiclePos = new Vector2(vehiclePos.x, playerPos.y);
-                    vehicleOBB = new OBB2D_XZ(vehiclePos, CR.fVAx, vehicleBox);
+                    Vector2 checkVehiclePos = new Vector2(vehiclePos.x, playerPos.y);
+                    vehicleOBB = new OBB2D_XZ(checkVehiclePos, CR.fVAx, vehicleBox);
 
-                    bool isOverlap = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+                    float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+                    bool isOverlap = MVT >= 0.0f;
 
                     foreach (var p in useLoop)
                     {
@@ -588,12 +608,13 @@ public class AIController : MonoBehaviour
                     OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, playerAxes, playerBox);
                     OBB2D_XZ vehicleOBB = new OBB2D_XZ(vehiclePos, CR.fVAx, vehicleBox);
 
-                    bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+                    bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB) >= 0.0f;
 
-                    vehiclePos = new Vector2(vehiclePos.x, playerPos.y);
-                    vehicleOBB = new OBB2D_XZ(vehiclePos, CR.fVAx, vehicleBox);
+                    Vector2 checkVehiclePos = new Vector2(vehiclePos.x, playerPos.y);
+                    vehicleOBB = new OBB2D_XZ(checkVehiclePos, CR.fVAx, vehicleBox);
 
-                    bool isOverlap = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+                    float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+                    bool isOverlap = MVT >= 0.0f;
 
                     foreach (var p in useLoop)
                     {
@@ -662,12 +683,18 @@ public class AIController : MonoBehaviour
             {
                 foreach (var p in PL)
                 {
-                    foreach (var rule in rules)
+                    foreach (var road in roadRules)
                     {
-                        if (p.CR.fPP.x >= rule.MinX && p.CR.fPP.x <= rule.MaxX
-                            && angleRange(p.CR.fPAn, rule.MinAngle, rule.MaxAngle))
+                        if (p.CR.fPP.x >= road.MinX && p.CR.fPP.x <= road.MaxX && angleRange(p.CR.fPAn, road.MinAngle, road.MaxAngle))
                         {
-                            rule.Target.Add(p);
+                            foreach (var overlap in overlapRules)
+                            {
+                                if (road.Target == overlap.Subject && overlap.MinDiffMVT == 1 && overlap.MaxDiffMVT == 1)
+                                {
+                                    overlap.Target.Add(p);
+                                    break;
+                                }
+                            }
                             break;
                         }
                     }
@@ -678,45 +705,50 @@ public class AIController : MonoBehaviour
                 int normalPro = 0; // normalProbability
                 int hardPro = 0; // hardProbability
 
-                switch (filter.easy.Count, filter.normal.Count, filter.hard.Count)
+                bool[] difficultyExists = new bool[3];
+                difficultyExists[0] = diffFilter.easy.fast.Count != 0 || diffFilter.easy.medium.Count != 0 || diffFilter.easy.slow.Count != 0;
+                difficultyExists[1] = diffFilter.normal.fast.Count != 0 || diffFilter.normal.medium.Count != 0 || diffFilter.normal.slow.Count != 0;
+                difficultyExists[2] = diffFilter.hard.fast.Count != 0 || diffFilter.hard.medium.Count != 0 || diffFilter.hard.slow.Count != 0;
+
+                switch (difficultyExists[0], difficultyExists[1], difficultyExists[2])
                 {
-                    case ( > 0, 0, 0):
+                    case (true, false, false):
                         easyPro = 100;
                         normalPro = -1;
                         hardPro = -1;
                         break;
 
-                    case (0, > 0, 0):
+                    case (false, true, false):
                         easyPro = -1;
                         normalPro = 100;
                         hardPro = -1;
                         break;
 
-                    case (0, 0, > 0):
+                    case (false, false, true):
                         easyPro = -1;
                         normalPro = -1;
                         hardPro = 100;
                         break;
 
-                    case ( > 0, > 0, 0):
+                    case (true, true, false):
                         easyPro = 97;
                         normalPro = 100;
                         hardPro = -1;
                         break;
 
-                    case (0, > 0, > 0):
+                    case (false, true, true):
                         easyPro = -1;
                         normalPro = 98;
                         hardPro = 100;
                         break;
 
-                    case ( > 0, 0, > 0):
+                    case (true, false, true):
                         easyPro = 98;
                         normalPro = -1;
                         hardPro = 100;
                         break;
 
-                    case ( > 0, > 0, > 0):
+                    case (true, true, true):
                         easyPro = 90;
                         normalPro = 99;
                         hardPro = 100;
@@ -725,29 +757,29 @@ public class AIController : MonoBehaviour
                         break;
                 }
 
-                if (rePro <= easyPro && filter.easy.Count != 0)
+                if (rePro <= easyPro)
                 {
-                    int randomIndex = Random.Range(0, filter.easy.Count);
-                    int index = filter.easy.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
-                    CR = filter.easy[index].CR;
-                    FCI.Add(filter.easy[index].FCI);
-                    RTL.Add(new ReturnList(filter.easy[index], nextFutureProcess));
+                    int randomIndex = 1;//Random.Range(0, diffFilter.easy.Count);
+                    //int index = diffFilter.easy.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
+                    CR = diffFilter.easy.fast[randomIndex].CR;
+                    FCI.Add(diffFilter.easy.fast[randomIndex].FCI);
+                    RTL.Add(new ReturnList(diffFilter.easy.fast[randomIndex], nextFutureProcess));
                 }
-                else if (rePro <= normalPro && filter.normal.Count != 0)
+                else if (rePro <= normalPro)
                 {
-                    int randomIndex = Random.Range(0, filter.normal.Count);
-                    int index = filter.normal.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
-                    CR = filter.normal[index].CR;
-                    FCI.Add(filter.normal[index].FCI);
-                    RTL.Add(new ReturnList(filter.normal[index], nextFutureProcess));
+                    int randomIndex = 1;//Random.Range(0, diffFilter.normal.Count);
+                    //int index = diffFilter.normal.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
+                    CR = diffFilter.normal.fast[randomIndex].CR;
+                    FCI.Add(diffFilter.normal.fast[randomIndex].FCI);
+                    RTL.Add(new ReturnList(diffFilter.normal.fast[randomIndex], nextFutureProcess));
                 }
-                else if (rePro <= hardPro && filter.hard.Count != 0)
+                else if (rePro <= hardPro)
                 {
-                    int randomindex = Random.Range(0, filter.hard.Count);
-                    int index = filter.hard.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
-                    CR = filter.hard[randomindex].CR;
-                    FCI.Add(filter.hard[randomindex].FCI);
-                    RTL.Add(new ReturnList(filter.hard[randomindex], nextFutureProcess));
+                    int randomindex = 1;//Random.Range(0, diffFilter.hard.Count);
+                    //int index = diffFilter.hard.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
+                    CR = diffFilter.hard.fast[randomindex].CR;
+                    FCI.Add(diffFilter.hard.fast[randomindex].FCI);
+                    RTL.Add(new ReturnList(diffFilter.hard.fast[randomindex], nextFutureProcess));
                 }
                 if (CR.isEnd)
                 {
