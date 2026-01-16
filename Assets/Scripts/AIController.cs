@@ -51,11 +51,13 @@ public class AIController : MonoBehaviour
         public Vector2 fVP; // futureVehiclePos
         public Vector2[] fVAx; // futureVehicleAxes
 
+        public float diffMVT; // differenceMVT
+
         public bool isValid;
         public bool isEnd;
 
         public CalculationResult
-        (Vector2 playerPos, Vector2[] playerAxes, float playerAngle, Vector2 vehiclePos, Vector2[] vehicleAxes)
+        (Vector2 playerPos, Vector2[] playerAxes, float playerAngle, Vector2 vehiclePos, Vector2[] vehicleAxes, float diffmvt)
         {
             if (playerPos.x >= -8.5f && playerPos.x <= 8.5f && (playerAngle < 85.0f || playerAngle > 275.0f) && 
                (playerPos.y <= vehiclePos.y || Mathf.Abs(playerPos.y - vehiclePos.y) <= 7.0f))
@@ -66,6 +68,8 @@ public class AIController : MonoBehaviour
 
                 fVP = vehiclePos;
                 fVAx = vehicleAxes;
+
+                diffMVT = diffmvt;
 
                 isValid = true;
                 isEnd = (playerPos.y >= vehiclePos.y);
@@ -78,6 +82,8 @@ public class AIController : MonoBehaviour
 
                 fVP = Vector2.zero;
                 fVAx = new Vector2[2];
+
+                diffMVT = 0.0f;
 
                 isValid = false;
                 isEnd = false;
@@ -227,12 +233,21 @@ public class AIController : MonoBehaviour
     {
         if (isStart && !isBreak && !isRestarting)
         {
+            BoxCollider vehicleBox = newVehicle.GetComponent<BoxCollider>();
+
             Vector2[] vehicleAxes = new Vector2[2];
             vehicleAxes[0] = new Vector2(newVehicle.transform.right.x, newVehicle.transform.right.z);
             vehicleAxes[1] = new Vector2(newVehicle.transform.forward.x, newVehicle.transform.forward.z);
 
+            Vector2 correctedVP = new Vector2(newVehiclePos.x, CR.fPP.y);
+
+            OBB2D_XZ playerOBB = new OBB2D_XZ(CR.fPP, CR.fPAx, playerBox);
+            OBB2D_XZ vehicleOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
+
+            float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+
             CR = new CalculationResult
-            (CR.fPP, CR.fPAx, CR.fPAn, newVehiclePos, vehicleAxes);
+            (CR.fPP, CR.fPAx, CR.fPAn, newVehiclePos, vehicleAxes, MVT);
 
             CalculationCourse();
         }
@@ -255,6 +270,8 @@ public class AIController : MonoBehaviour
 
     public void InitStart()
     {
+        BoxCollider vehicleBox = newVehicle.GetComponent<BoxCollider>();
+
         Vector2 playerPos = new Vector2(transform.position.x, transform.position.z);
         Vector2[] playerAxes = new Vector2[2];
         playerAxes[0] = new Vector2(transform.right.x, transform.right.z);
@@ -266,8 +283,15 @@ public class AIController : MonoBehaviour
         vehicleAxes[0] = new Vector2(newVehicle.transform.right.x, newVehicle.transform.right.z);
         vehicleAxes[1] = new Vector2(newVehicle.transform.forward.x, newVehicle.transform.forward.z);
 
+        Vector2 correctedVP = new Vector2(vehiclePos.x, playerPos.y);
+
+        OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, playerAxes, playerBox);
+        OBB2D_XZ vehicleOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
+
+        float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+
         CR = new CalculationResult
-        (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes);
+        (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes, MVT);
 
         FCI.Clear();
 
@@ -367,21 +391,41 @@ public class AIController : MonoBehaviour
         float playerAngle = transform.eulerAngles.y;
 
         for(int i = 0; i < vehicles.Count; i++)
-        {    
+        {
+            BoxCollider vehicleBox = vehicles[i].GetComponent<BoxCollider>();
+
             Vector2 vehiclePos = RSL[i].vehiclesPos;
-            if (i > 0)
+            if (i > 0) // ñ¢óàåvéZÇ≈Ç‡é‘óÒÇÃé‘ä‘ãóó£Çà€éùÇ∑ÇÈÇΩÇﬂÇÃyï‚ê≥
             {
                 Vector2 critenionAbs = RSL[i - 1].vehiclesPos;
                 vehiclePos.y = CR.fVP.y + Mathf.Abs(critenionAbs.y - vehiclePos.y);
             }
             Vector2[] vehicleAxes = RSL[i].vehiclesAxes;
 
-            if (i == 0) 
-            CR = new CalculationResult
-            (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes);
+            if (i == 0)
+            {
+                Vector2 correctedVP = new Vector2(vehiclePos.x, playerPos.y);
+
+                OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, playerAxes, playerBox);
+                OBB2D_XZ vehicleOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
+
+                float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+
+                CR = new CalculationResult
+                (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes, MVT);
+            }
             else
-            CR = new CalculationResult
-            (CR.fPP, CR.fPAx, CR.fPAn, vehiclePos, vehicleAxes);
+            {
+                Vector2 correctedVP = new Vector2(vehiclePos.x, CR.fPP.y);
+
+                OBB2D_XZ playerOBB = new OBB2D_XZ(CR.fPP, CR.fPAx, playerBox);
+                OBB2D_XZ vehicleOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
+
+                float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+
+                CR = new CalculationResult
+                (CR.fPP, CR.fPAx, CR.fPAn, vehiclePos, vehicleAxes, MVT);
+            }
 
             CalculationCourse();
             if (!isRunning)
@@ -400,6 +444,8 @@ public class AIController : MonoBehaviour
 
     private void CalculationCourse()
     {
+        BoxCollider vehicleBox = newVehicle.GetComponent<BoxCollider>();
+
         CalculationResult tempCR = CR;
 
         Vector3 aaagh = new Vector3(CR.fPP.x, transform.position.y + 1, CR.fPP.y);
@@ -412,8 +458,6 @@ public class AIController : MonoBehaviour
         int returnCount = 0;
 
         List<int> nextFutureProcess = new List<int> { 1, 2, 3 };
-
-        BoxCollider vehicleBox = newVehicle.GetComponent<BoxCollider>();
 
         while (!CR.isEnd && !isBreak)
         {
@@ -453,9 +497,9 @@ public class AIController : MonoBehaviour
             };
             var overlapRules = new[]
             {
-                new { Subject = diffFilter.easy, MinDiffMVT = 1, MaxDiffMVT = 1, Target = diffFilter.easy.fast },
-                new { Subject = diffFilter.easy, MinDiffMVT = 1, MaxDiffMVT = 1, Target = diffFilter.easy.fast },
-                new { Subject = diffFilter.easy, MinDiffMVT = 1, MaxDiffMVT = 1, Target = diffFilter.easy.medium },
+                new { MinDiffMVT = 1.0f, MaxDiffMVT = float.PositiveInfinity, Target = 1 },
+                new { MinDiffMVT = 0.4f, MaxDiffMVT = 1.0f, Target = 2 },
+                new { MinDiffMVT = float.NegativeInfinity, MaxDiffMVT = 0.4f, Target = 3 },
             };
             bool angleRange(float angle, float min, float max)
             {
@@ -463,9 +507,10 @@ public class AIController : MonoBehaviour
                 else return angle >= min || angle <= max;
             }
 
-            List<PairList> nextPL1 = new List<PairList>();
-            List<PairList> nextPL2 = new List<PairList>();
+            List<PairList> nextPL = new List<PairList>();
             List<PairList> PL = new List<PairList>();
+
+            bool overlapped = CR.diffMVT >= 0.0f;
 
             if (nextFutureProcess.Contains(1))
             {
@@ -479,20 +524,25 @@ public class AIController : MonoBehaviour
                     Vector2 playerPos = CR.fPP + CR.fPAx[1] * (playerSpeed * time);
                     Vector2 vehiclePos = CR.fVP + CR.fVAx[1] * (vehicleSpeed * time);
 
-                    CalculationResult nextCR = new CalculationResult
-                    (playerPos, CR.fPAx, CR.fPAn, vehiclePos, CR.fVAx);
-                    FutureCourseInfo nextFCI = new FutureCourseInfo(futureProcess, futureKey, time);
+                    Vector2 correctedVP = new Vector2(vehiclePos.x, playerPos.y);
 
                     OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, CR.fPAx, playerBox);
                     OBB2D_XZ vehicleOBB = new OBB2D_XZ(vehiclePos, CR.fVAx, vehicleBox);
+                    OBB2D_XZ correctedVOBB = new OBB2D_XZ(correctedVP, CR.fVAx, vehicleBox);
 
                     bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB) >= 0.0f;
 
-                    Vector2 checkVehiclePos = new Vector2(vehiclePos.x, playerPos.y);
-                    vehicleOBB = new OBB2D_XZ(checkVehiclePos, CR.fVAx, vehicleBox);
-
                     float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+
+                    float diffMVT = CR.diffMVT - MVT;
+
                     bool isOverlap = MVT >= 0.0f;
+
+                    bool ProcessBreak = !overlapped && isOverlap || isCollision;
+
+                    CalculationResult nextCR = new CalculationResult
+                    (playerPos, CR.fPAx, CR.fPAn, vehiclePos, CR.fVAx, diffMVT);
+                    FutureCourseInfo nextFCI = new FutureCourseInfo(futureProcess, futureKey, time);
 
                     foreach (var p in useLoop)
                     {
@@ -506,25 +556,13 @@ public class AIController : MonoBehaviour
                         }
                     }
 
-                    if (nextCR.isValid && !isCollision && !isOverlap)
+                    if (nextCR.isValid && ProcessBreak)
                     {
                         foreach (var p in useLoop)
                         {
                             if (i == p)
                             {
-                                nextPL1.Add(new PairList(nextCR, nextFCI));
-
-                                break;
-                            }
-                        }
-                    }
-                    else if (nextCR.isValid && !isCollision && isOverlap)
-                    {
-                        foreach (var p in useLoop)
-                        {
-                            if (i == p)
-                            {
-                                nextPL2.Add(new PairList(nextCR, nextFCI));
+                                nextPL.Add(new PairList(nextCR, nextFCI));
 
                                 break;
                             }
@@ -532,10 +570,9 @@ public class AIController : MonoBehaviour
                     }
                     else
                     {
-                        if (isCollision || nextPL1.Count == 0 && nextPL2.Count == 0)
+                        if (ProcessBreak || nextPL.Count == 0)
                         {
-                            nextPL1.Clear();
-                            nextPL2.Clear();
+                            nextPL.Clear();
 
                             nextFutureProcess.Remove(1);
 
@@ -550,11 +587,8 @@ public class AIController : MonoBehaviour
                     }
                 }
             }
-            if (nextPL1.Count != 0) foreach (var p in nextPL1) PL.Add(p);
-            else foreach (var p in nextPL2) PL.Add(p);
-
-            nextPL1.Clear();
-            nextPL2.Clear();
+            foreach (var p in nextPL) PL.Add(p);
+            nextPL.Clear();
 
             for (int rotation = 0; rotation < 2; rotation++)
             {
@@ -601,20 +635,25 @@ public class AIController : MonoBehaviour
                     playerAxes[0] = new Vector2(Mathf.Cos(angleRad), -Mathf.Sin(angleRad));
                     playerAxes[1] = new Vector2(Mathf.Sin(angleRad), Mathf.Cos(angleRad));
 
-                    CalculationResult nextCR = new CalculationResult
-                    (playerPos, playerAxes, angleDeg, vehiclePos, CR.fVAx);
-                    FutureCourseInfo nextFCI = new FutureCourseInfo(futureProcess, futureKey, time);
+                    Vector2 correctedVP = new Vector2(vehiclePos.x, playerPos.y);
 
                     OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, playerAxes, playerBox);
                     OBB2D_XZ vehicleOBB = new OBB2D_XZ(vehiclePos, CR.fVAx, vehicleBox);
+                    OBB2D_XZ correctedVOBB = new OBB2D_XZ(correctedVP, CR.fVAx, vehicleBox);
 
                     bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB) >= 0.0f;
 
-                    Vector2 checkVehiclePos = new Vector2(vehiclePos.x, playerPos.y);
-                    vehicleOBB = new OBB2D_XZ(checkVehiclePos, CR.fVAx, vehicleBox);
-
                     float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+
+                    float diffMVT = CR.diffMVT - MVT;
+
                     bool isOverlap = MVT >= 0.0f;
+
+                    bool ProcessBreak = !overlapped && isOverlap || isCollision;
+
+                    CalculationResult nextCR = new CalculationResult
+                    (playerPos, playerAxes, angleDeg, vehiclePos, CR.fVAx, diffMVT);
+                    FutureCourseInfo nextFCI = new FutureCourseInfo(futureProcess, futureKey, time);
 
                     foreach (var p in useLoop)
                     {
@@ -628,25 +667,13 @@ public class AIController : MonoBehaviour
                         }
                     }
 
-                    if (nextCR.isValid && !isCollision && !isOverlap)
+                    if (nextCR.isValid && !ProcessBreak)
                     {
                         foreach (var p in useLoop)
                         {
                             if (i == p)
                             {
-                                nextPL1.Add(new PairList(nextCR, nextFCI));
-
-                                break;
-                            }
-                        }
-                    }
-                    else if (nextCR.isValid && !isCollision && isOverlap)
-                    {
-                        foreach (var p in useLoop)
-                        {
-                            if (i == p)
-                            {
-                                nextPL2.Add(new PairList(nextCR, nextFCI));
+                                nextPL.Add(new PairList(nextCR, nextFCI));
 
                                 break;
                             }
@@ -654,10 +681,9 @@ public class AIController : MonoBehaviour
                     }
                     else
                     {
-                        if (isCollision || nextPL1.Count == 0 && nextPL2.Count == 0)
+                        if (ProcessBreak || nextPL.Count == 0)
                         {
-                            nextPL1.Clear();
-                            nextPL2.Clear();
+                            nextPL.Clear();
 
                             if (rotation == 0) nextFutureProcess.Remove(2);
                             else if (rotation == 1) nextFutureProcess.Remove(3);
@@ -672,11 +698,8 @@ public class AIController : MonoBehaviour
                         break;
                     }
                 }
-                if (nextPL1.Count != 0) foreach (var p in nextPL1) PL.Add(p);
-                else foreach (var p in nextPL2) PL.Add(p);
-
-                nextPL1.Clear();
-                nextPL2.Clear();
+                foreach (var p in nextPL) PL.Add(p);
+                nextPL.Clear();
             }
 
             if (PL.Count != 0)
@@ -689,9 +712,21 @@ public class AIController : MonoBehaviour
                         {
                             foreach (var overlap in overlapRules)
                             {
-                                if (road.Target == overlap.Subject && overlap.MinDiffMVT == 1 && overlap.MaxDiffMVT == 1)
+                                if (p.CR.diffMVT >= overlap.MinDiffMVT && p.CR.diffMVT <= overlap.MaxDiffMVT)
                                 {
-                                    overlap.Target.Add(p);
+                                    switch (overlap.Target)
+                                    {
+                                        case 1:
+                                            road.Target.fast.Add(p);
+                                            break;
+                                        case 2:
+                                            road.Target.medium.Add(p);
+                                            break;
+                                        case 3:
+                                            road.Target.slow.Add(p);
+                                            break;
+                                    }
+
                                     break;
                                 }
                             }
@@ -752,8 +787,6 @@ public class AIController : MonoBehaviour
                         easyPro = 90;
                         normalPro = 99;
                         hardPro = 100;
-                        break;
-                    default:
                         break;
                 }
 
