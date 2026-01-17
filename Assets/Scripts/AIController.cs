@@ -51,13 +51,15 @@ public class AIController : MonoBehaviour
         public Vector2 fVP; // futureVehiclePos
         public Vector2[] fVAx; // futureVehicleAxes
 
+        public float MVT;
         public float diffMVT; // differenceMVT
 
         public bool isValid;
         public bool isEnd;
 
         public CalculationResult
-        (Vector2 playerPos, Vector2[] playerAxes, float playerAngle, Vector2 vehiclePos, Vector2[] vehicleAxes, float diffmvt)
+        (Vector2 playerPos, Vector2[] playerAxes, float playerAngle, Vector2 vehiclePos, Vector2[] vehicleAxes, 
+         float mvt, float diffmvt)
         {
             if (playerPos.x >= -8.5f && playerPos.x <= 8.5f && (playerAngle < 85.0f || playerAngle > 275.0f) && 
                (playerPos.y <= vehiclePos.y || Mathf.Abs(playerPos.y - vehiclePos.y) <= 7.0f))
@@ -69,6 +71,7 @@ public class AIController : MonoBehaviour
                 fVP = vehiclePos;
                 fVAx = vehicleAxes;
 
+                MVT = mvt;
                 diffMVT = diffmvt;
 
                 isValid = true;
@@ -83,6 +86,7 @@ public class AIController : MonoBehaviour
                 fVP = Vector2.zero;
                 fVAx = new Vector2[2];
 
+                MVT  = 0.0f;
                 diffMVT = 0.0f;
 
                 isValid = false;
@@ -100,8 +104,8 @@ public class AIController : MonoBehaviour
         {
             center = CRCenter;
             axes = new Vector2[2];
-            axes[0] = CRAxes[0].normalized;
-            axes[1] = CRAxes[1].normalized;
+            axes[0] = CRAxes[0];
+            axes[1] = CRAxes[1];
             Vector3 size = Vector3.Scale(box.size, box.transform.lossyScale);
             extents = new Vector2((size.x * 1.15f) * 0.5f, (size.z * 1.15f) * 0.5f);
         }
@@ -118,8 +122,10 @@ public class AIController : MonoBehaviour
             axesToTest[2] = b.axes[0];
             axesToTest[3] = b.axes[1];
 
-            foreach (var axis in axesToTest)
+            foreach (var rawAxis in axesToTest)
             {
+                Vector2 axis = rawAxis.normalized;
+
                 float minA, maxA;
                 ProjectOBBOnAxis(a, axis, out minA, out maxA);
 
@@ -128,7 +134,7 @@ public class AIController : MonoBehaviour
 
                 float overlap = Mathf.Min(maxA, maxB) - Mathf.Max(minA, minB);
 
-                if (overlap < 0.0f) return 0.0f;
+                if (overlap < 0.0f) return overlap;
 
                 if (overlap < MVT) MVT = overlap;
             }
@@ -242,12 +248,12 @@ public class AIController : MonoBehaviour
             Vector2 correctedVP = new Vector2(newVehiclePos.x, CR.fPP.y);
 
             OBB2D_XZ playerOBB = new OBB2D_XZ(CR.fPP, CR.fPAx, playerBox);
-            OBB2D_XZ vehicleOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
+            OBB2D_XZ correctedVOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
 
-            float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+            float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, correctedVOBB);
 
             CR = new CalculationResult
-            (CR.fPP, CR.fPAx, CR.fPAn, newVehiclePos, vehicleAxes, MVT);
+            (CR.fPP, CR.fPAx, CR.fPAn, newVehiclePos, vehicleAxes, MVT, MVT);
 
             CalculationCourse();
         }
@@ -285,13 +291,15 @@ public class AIController : MonoBehaviour
 
         Vector2 correctedVP = new Vector2(vehiclePos.x, playerPos.y);
 
-        OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, playerAxes, playerBox);
-        OBB2D_XZ vehicleOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
+        Debug.Log("player:" + playerPos + "   vehicle:" + correctedVP);
 
-        float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+        OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, playerAxes, playerBox);
+        OBB2D_XZ correctedVOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
+
+        float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, correctedVOBB);
 
         CR = new CalculationResult
-        (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes, MVT);
+        (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes, MVT, MVT);
 
         FCI.Clear();
 
@@ -407,24 +415,24 @@ public class AIController : MonoBehaviour
                 Vector2 correctedVP = new Vector2(vehiclePos.x, playerPos.y);
 
                 OBB2D_XZ playerOBB = new OBB2D_XZ(playerPos, playerAxes, playerBox);
-                OBB2D_XZ vehicleOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
+                OBB2D_XZ correctedVOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
 
-                float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+                float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, correctedVOBB);
 
                 CR = new CalculationResult
-                (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes, MVT);
+                (playerPos, playerAxes, playerAngle, vehiclePos, vehicleAxes, MVT, MVT);
             }
             else
             {
                 Vector2 correctedVP = new Vector2(vehiclePos.x, CR.fPP.y);
 
                 OBB2D_XZ playerOBB = new OBB2D_XZ(CR.fPP, CR.fPAx, playerBox);
-                OBB2D_XZ vehicleOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
+                OBB2D_XZ correctedVOBB = new OBB2D_XZ(correctedVP, vehicleAxes, vehicleBox);
 
-                float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+                float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, correctedVOBB);
 
                 CR = new CalculationResult
-                (CR.fPP, CR.fPAx, CR.fPAn, vehiclePos, vehicleAxes, MVT);
+                (CR.fPP, CR.fPAx, CR.fPAn, vehiclePos, vehicleAxes, MVT, MVT);
             }
 
             CalculationCourse();
@@ -461,56 +469,14 @@ public class AIController : MonoBehaviour
 
         while (!CR.isEnd && !isBreak)
         {
-            difficultyFilter diffFilter = new difficultyFilter();
-
-            var roadRules = new[]
-            {
-                new { MinX = 0.0f, MaxX = 2.5f, MinAngle = 330.0f, MaxAngle = 20.0f, Target = diffFilter.easy },
-                new { MinX = 0.0f, MaxX = 2.5f, MinAngle = 300.0f, MaxAngle = 40.0f, Target = diffFilter.normal },
-                new { MinX = 0.0f, MaxX = 2.5f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
-
-                new { MinX = 2.5f, MaxX = 5.0f, MinAngle = 315.0f, MaxAngle = 20.0f, Target = diffFilter.easy },
-                new { MinX = 2.5f, MaxX = 5.0f, MinAngle = 300.0f, MaxAngle = 360.0f, Target = diffFilter.normal },
-                new { MinX = 2.5f, MaxX = 5.0f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
-
-                new { MinX = 5.0f, MaxX = 6.5f, MinAngle = 320.0f, MaxAngle = 360.0f, Target = diffFilter.easy },
-                new { MinX = 5.0f, MaxX = 6.5f, MinAngle = 0.0f, MaxAngle = 25.0f, Target = diffFilter.normal },
-                new { MinX = 5.0f, MaxX = 6.5f, MinAngle = 275f, MaxAngle = 85.0f, Target = diffFilter.hard },
-
-                new { MinX = 6.5f, MaxX = 8.5f, MinAngle = 300.0f, MaxAngle = 360.0f, Target = diffFilter.easy },
-                new { MinX = 6.5f, MaxX = 8.5f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
-
-                new { MinX = -2.5f, MaxX = 0.0f, MinAngle = 340.0f, MaxAngle = 30.0f, Target = diffFilter.easy },
-                new { MinX = -2.5f, MaxX = 0.0f, MinAngle = 320.0f, MaxAngle = 85.0f, Target = diffFilter.normal },
-                new { MinX = -2.5f, MaxX = 0.0f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = diffFilter.hard },
-
-                new { MinX = -5.0f, MaxX = -2.5f, MinAngle = 340.0f, MaxAngle = 40.0f, Target = diffFilter.easy },
-                new { MinX = -5.0f, MaxX = -2.5f, MinAngle = 0.0f, MaxAngle = 60.0f, Target = diffFilter.normal },
-                new { MinX = -5.0f, MaxX = -2.5f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = diffFilter.hard },
-
-                new { MinX = -6.5f, MaxX = -5.0f, MinAngle = 0.0f, MaxAngle = 45.0f, Target = diffFilter.easy },
-                new { MinX = -6.5f, MaxX = -5.0f, MinAngle = 335.0f, MaxAngle = 360.0f, Target = diffFilter.normal },
-                new { MinX = -6.5f, MaxX = -5.0f, MinAngle = 275.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
-
-                new { MinX = -8.5f, MaxX = -6.5f, MinAngle = 0.0f, MaxAngle = 60.0f, Target = diffFilter.easy },
-                new { MinX = -8.5f, MaxX = -6.5f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = diffFilter.hard }
-            };
-            var overlapRules = new[]
-            {
-                new { MinDiffMVT = 1.0f, MaxDiffMVT = float.PositiveInfinity, Target = 1 },
-                new { MinDiffMVT = 0.4f, MaxDiffMVT = 1.0f, Target = 2 },
-                new { MinDiffMVT = float.NegativeInfinity, MaxDiffMVT = 0.4f, Target = 3 },
-            };
-            bool angleRange(float angle, float min, float max)
-            {
-                if (min < max) return angle >= min && angle <= max;
-                else return angle >= min || angle <= max;
-            }
-
             List<PairList> nextPL = new List<PairList>();
             List<PairList> PL = new List<PairList>();
 
-            bool overlapped = CR.diffMVT >= 0.0f;
+            //Debug.Log("<color=blue>äÓèÄMVT:</color>" + CR.MVT);
+
+            bool overlapped = CR.MVT >= 0.0f;
+
+            //Debug.Log("<color=blue>overlapped:</color>" + overlapped);
 
             if (nextFutureProcess.Contains(1))
             {
@@ -532,16 +498,21 @@ public class AIController : MonoBehaviour
 
                     bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB) >= 0.0f;
 
-                    float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+                    float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, correctedVOBB);
 
-                    float diffMVT = CR.diffMVT - MVT;
+                    float diffMVT = CR.MVT - MVT;
 
                     bool isOverlap = MVT >= 0.0f;
 
                     bool ProcessBreak = !overlapped && isOverlap || isCollision;
 
+                    //Debug.Log("1");
+                    //Debug.Log("MVT:" + MVT + "  diffMVT" + diffMVT);
+
+                    if (!overlapped && isOverlap) Debug.LogWarning("êiòHè„Ç…êNì¸");
+
                     CalculationResult nextCR = new CalculationResult
-                    (playerPos, CR.fPAx, CR.fPAn, vehiclePos, CR.fVAx, diffMVT);
+                    (playerPos, CR.fPAx, CR.fPAn, vehiclePos, CR.fVAx, MVT, diffMVT);
                     FutureCourseInfo nextFCI = new FutureCourseInfo(futureProcess, futureKey, time);
 
                     foreach (var p in useLoop)
@@ -556,7 +527,7 @@ public class AIController : MonoBehaviour
                         }
                     }
 
-                    if (nextCR.isValid && ProcessBreak)
+                    if (nextCR.isValid && !ProcessBreak)
                     {
                         foreach (var p in useLoop)
                         {
@@ -575,12 +546,14 @@ public class AIController : MonoBehaviour
                             nextPL.Clear();
 
                             nextFutureProcess.Remove(1);
-
-                            Vector3 sss = new Vector3(playerPos.x, transform.position.y, playerPos.y);
-                            Quaternion ttt = Quaternion.Euler(0, nextCR.fPAn, 0);
-                            Instantiate(cube3, sss, ttt);
-                            Vector3 fff = new Vector3(vehiclePos.x, newVehicle.transform.position.y + 1f, vehiclePos.y);
-                            Instantiate(cube5, fff, newVehicle.transform.rotation);
+                            if (isCollision)
+                            {
+                                Vector3 sss = new Vector3(playerPos.x, transform.position.y, playerPos.y);
+                                Quaternion ttt = Quaternion.Euler(0, nextCR.fPAn, 0);
+                                Instantiate(cube3, sss, ttt);
+                                Vector3 fff = new Vector3(vehiclePos.x, newVehicle.transform.position.y + 1f, vehiclePos.y);
+                                Instantiate(cube5, fff, newVehicle.transform.rotation);
+                            }
                         }
 
                         break;
@@ -590,9 +563,9 @@ public class AIController : MonoBehaviour
             foreach (var p in nextPL) PL.Add(p);
             nextPL.Clear();
 
-            for (int rotation = 0; rotation < 2; rotation++)
+            for (int dir = 0; dir < 2; dir++)
             {
-                if (rotation == 0)
+                if (dir == 0)
                 {
                     if (nextFutureProcess.Contains(2))
                     {
@@ -601,7 +574,7 @@ public class AIController : MonoBehaviour
                     }
                     else continue;
                 }
-                else if (rotation == 1)
+                else if (dir == 1)
                 {
                     if (nextFutureProcess.Contains(3))
                     {
@@ -643,16 +616,22 @@ public class AIController : MonoBehaviour
 
                     bool isCollision = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB) >= 0.0f;
 
-                    float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, vehicleOBB);
+                    float MVT = SAT2D_XZ.CheckOBBvsOBB(playerOBB, correctedVOBB);
 
-                    float diffMVT = CR.diffMVT - MVT;
+                    float diffMVT = CR.MVT - MVT;
 
                     bool isOverlap = MVT >= 0.0f;
 
                     bool ProcessBreak = !overlapped && isOverlap || isCollision;
 
+                    //if (dir == 0) Debug.Log("2");
+                    //else Debug.Log("3");
+                        //Debug.Log("MVT:" + MVT + "  diffMVT" + diffMVT);
+
+                    if (!overlapped && isOverlap) Debug.LogWarning("êiòHè„Ç…êNì¸");
+
                     CalculationResult nextCR = new CalculationResult
-                    (playerPos, playerAxes, angleDeg, vehiclePos, CR.fVAx, diffMVT);
+                    (playerPos, playerAxes, angleDeg, vehiclePos, CR.fVAx, MVT, diffMVT);
                     FutureCourseInfo nextFCI = new FutureCourseInfo(futureProcess, futureKey, time);
 
                     foreach (var p in useLoop)
@@ -685,14 +664,17 @@ public class AIController : MonoBehaviour
                         {
                             nextPL.Clear();
 
-                            if (rotation == 0) nextFutureProcess.Remove(2);
-                            else if (rotation == 1) nextFutureProcess.Remove(3);
+                            if (dir == 0) nextFutureProcess.Remove(2);
+                            else if (dir == 1) nextFutureProcess.Remove(3);
 
-                            Vector3 sss = new Vector3(playerPos.x, transform.position.y, playerPos.y);
-                            Quaternion ttt = Quaternion.Euler(0, nextCR.fPAn, 0);
-                            Instantiate(cube3, sss, ttt);
-                            Vector3 fff = new Vector3(vehiclePos.x, newVehicle.transform.position.y + 1f, vehiclePos.y);
-                            Instantiate(cube5, fff, newVehicle.transform.rotation);
+                            if (isCollision)
+                            {
+                                Vector3 sss = new Vector3(playerPos.x, transform.position.y, playerPos.y);
+                                Quaternion ttt = Quaternion.Euler(0, nextCR.fPAn, 0);
+                                Instantiate(cube3, sss, ttt);
+                                Vector3 fff = new Vector3(vehiclePos.x, newVehicle.transform.position.y + 1f, vehiclePos.y);
+                                Instantiate(cube5, fff, newVehicle.transform.rotation);
+                            }
                         }
 
                         break;
@@ -704,6 +686,103 @@ public class AIController : MonoBehaviour
 
             if (PL.Count != 0)
             {
+                difficultyFilter diffFilter = new difficultyFilter();
+
+                var roadRules = new[]
+                {
+                new { MinX = 0.0f, MaxX = 2.5f, MinAngle = 330.0f, MaxAngle = 20.0f, Target = diffFilter.easy },
+                new { MinX = 0.0f, MaxX = 2.5f, MinAngle = 300.0f, MaxAngle = 40.0f, Target = diffFilter.normal },
+                new { MinX = 0.0f, MaxX = 2.5f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
+
+                new { MinX = 2.5f, MaxX = 5.0f, MinAngle = 315.0f, MaxAngle = 20.0f, Target = diffFilter.easy },
+                new { MinX = 2.5f, MaxX = 5.0f, MinAngle = 300.0f, MaxAngle = 360.0f, Target = diffFilter.normal },
+                new { MinX = 2.5f, MaxX = 5.0f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
+
+                new { MinX = 5.0f, MaxX = 6.5f, MinAngle = 320.0f, MaxAngle = 360.0f, Target = diffFilter.easy },
+                new { MinX = 5.0f, MaxX = 6.5f, MinAngle = 0.0f, MaxAngle = 25.0f, Target = diffFilter.normal },
+                new { MinX = 5.0f, MaxX = 6.5f, MinAngle = 275f, MaxAngle = 85.0f, Target = diffFilter.hard },
+
+                new { MinX = 6.5f, MaxX = 8.5f, MinAngle = 300.0f, MaxAngle = 360.0f, Target = diffFilter.easy },
+                new { MinX = 6.5f, MaxX = 8.5f, MinAngle = 0.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
+
+                new { MinX = -2.5f, MaxX = 0.0f, MinAngle = 340.0f, MaxAngle = 30.0f, Target = diffFilter.easy },
+                new { MinX = -2.5f, MaxX = 0.0f, MinAngle = 320.0f, MaxAngle = 85.0f, Target = diffFilter.normal },
+                new { MinX = -2.5f, MaxX = 0.0f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = diffFilter.hard },
+
+                new { MinX = -5.0f, MaxX = -2.5f, MinAngle = 340.0f, MaxAngle = 40.0f, Target = diffFilter.easy },
+                new { MinX = -5.0f, MaxX = -2.5f, MinAngle = 0.0f, MaxAngle = 60.0f, Target = diffFilter.normal },
+                new { MinX = -5.0f, MaxX = -2.5f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = diffFilter.hard },
+
+                new { MinX = -6.5f, MaxX = -5.0f, MinAngle = 0.0f, MaxAngle = 45.0f, Target = diffFilter.easy },
+                new { MinX = -6.5f, MaxX = -5.0f, MinAngle = 335.0f, MaxAngle = 360.0f, Target = diffFilter.normal },
+                new { MinX = -6.5f, MaxX = -5.0f, MinAngle = 275.0f, MaxAngle = 85.0f, Target = diffFilter.hard },
+
+                new { MinX = -8.5f, MaxX = -6.5f, MinAngle = 0.0f, MaxAngle = 60.0f, Target = diffFilter.easy },
+                new { MinX = -8.5f, MaxX = -6.5f, MinAngle = 275.0f, MaxAngle = 360.0f, Target = diffFilter.hard }
+                };
+                var overlapRules = new[]
+                {
+                new { MinDiffMVT = 1.0f, MaxDiffMVT = float.PositiveInfinity, Target = 1 },
+                new { MinDiffMVT = 0.4f, MaxDiffMVT = 1.0f, Target = 2 },
+                new { MinDiffMVT = float.NegativeInfinity, MaxDiffMVT = 0.4f, Target = 3 },
+                };
+                bool angleRange(float angle, float min, float max)
+                {
+                    if (min < max) return angle >= min && angle <= max;
+                    else return angle >= min || angle <= max;
+                }
+
+                var patterns = new[]
+{
+                    new { First = true, Second = false, Third = false },
+                    new { First = false, Second = true, Third = false },
+                    new { First = false, Second = false, Third = true },
+                    new { First = true, Second = true, Third = false },
+                    new { First = false, Second = true, Third = true },
+                    new { First = true, Second = false, Third = true },
+                    new { First = true,Second = true, Third = true }
+                };
+                var difficultyPro = new (int easyPro, int normalPro, int hardPro)[]
+                {
+                    (100, -1, -1),
+                    (-1, 100, -1),
+                    (-1, -1, 100),
+                    (97, 100, -1),
+                    (-1, 98, 100),
+                    (98, -1, 100),
+                    (90, 99, 100)
+                };
+                var easyAP = new (int FastPro, int MediumPro, int SlowPro)[] // easyAvoidanceProbability
+                {
+                    (100, -1, -1),
+                    (-1, 100, -1),
+                    (-1, -1, 100),
+                    (80, 100, -1),
+                    (-1, 90, 100),
+                    (95, -1, 100),
+                    (70, 90, 100)
+                };
+                var normalAP = new (int FastPro, int MediumPro, int SlowPro)[] // normalAvoidanceProbability
+                {
+                    (100, -1, -1),
+                    (-1, 100, -1),
+                    (-1, -1, 100),
+                    (60, 100, -1),
+                    (-1, 75, 100),
+                    (80, -1, 100),
+                    (65, 90, 100)
+                };
+                var hardAP = new (int FastPro, int MediumPro, int SlowPro)[] // hardAvoidanceProbability
+                {
+                    (100, -1, -1),
+                    (-1, 100, -1),
+                    (-1, -1, 100),
+                    (20, 100, -1),
+                    (-1, 30, 100),
+                    (15, -1, 100),
+                    (15, 35, 100)
+                };
+
                 foreach (var p in PL)
                 {
                     foreach (var road in roadRules)
@@ -735,85 +814,76 @@ public class AIController : MonoBehaviour
                     }
                 }
 
-                int rePro = Random.Range(0, 101); // resultProbability
+                int diffPro = Random.Range(0, 101); // difficultyProbability
                 int easyPro = 0; // easyProbability
                 int normalPro = 0; // normalProbability
                 int hardPro = 0; // hardProbability
 
+                int avoidPro = Random.Range(0, 101); // avoidanceProbability
+                int fastPro = 0; // fastProbability
+                int mediumPro = 0; // mediumProbability
+                int slowPro = 0; // slowProbability
+
                 bool[] difficultyExists = new bool[3];
-                difficultyExists[0] = diffFilter.easy.fast.Count != 0 || diffFilter.easy.medium.Count != 0 || diffFilter.easy.slow.Count != 0;
-                difficultyExists[1] = diffFilter.normal.fast.Count != 0 || diffFilter.normal.medium.Count != 0 || diffFilter.normal.slow.Count != 0;
-                difficultyExists[2] = diffFilter.hard.fast.Count != 0 || diffFilter.hard.medium.Count != 0 || diffFilter.hard.slow.Count != 0;
+                difficultyExists[0] = diffFilter.easy.fast.Any() || diffFilter.easy.medium.Any() || diffFilter.easy.slow.Any();
+                difficultyExists[1] = diffFilter.normal.fast.Any() || diffFilter.normal.medium.Any() || diffFilter.normal.slow.Any();
+                difficultyExists[2] = diffFilter.hard.fast.Any() || diffFilter.hard.medium.Any() || diffFilter.hard.slow.Any();
 
-                switch (difficultyExists[0], difficultyExists[1], difficultyExists[2])
+                for (var i = 0; i < patterns.Length; i++)
                 {
-                    case (true, false, false):
-                        easyPro = 100;
-                        normalPro = -1;
-                        hardPro = -1;
-                        break;
+                    if (difficultyExists[0] == patterns[i].First && difficultyExists[1] == patterns[i].Second && difficultyExists[2] == patterns[i].Third)
+                    {
+                        (easyPro, normalPro, hardPro) = difficultyPro[i];
 
-                    case (false, true, false):
-                        easyPro = -1;
-                        normalPro = 100;
-                        hardPro = -1;
                         break;
-
-                    case (false, false, true):
-                        easyPro = -1;
-                        normalPro = -1;
-                        hardPro = 100;
-                        break;
-
-                    case (true, true, false):
-                        easyPro = 97;
-                        normalPro = 100;
-                        hardPro = -1;
-                        break;
-
-                    case (false, true, true):
-                        easyPro = -1;
-                        normalPro = 98;
-                        hardPro = 100;
-                        break;
-
-                    case (true, false, true):
-                        easyPro = 98;
-                        normalPro = -1;
-                        hardPro = 100;
-                        break;
-
-                    case (true, true, true):
-                        easyPro = 90;
-                        normalPro = 99;
-                        hardPro = 100;
-                        break;
+                    }
                 }
 
-                if (rePro <= easyPro)
+                var subject = diffFilter.easy;
+                var proTable = easyAP;
+
+                var TargetList = diffFilter.easy.fast;
+
+                if (diffPro <= easyPro)
                 {
-                    int randomIndex = 1;//Random.Range(0, diffFilter.easy.Count);
-                    //int index = diffFilter.easy.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
-                    CR = diffFilter.easy.fast[randomIndex].CR;
-                    FCI.Add(diffFilter.easy.fast[randomIndex].FCI);
-                    RTL.Add(new ReturnList(diffFilter.easy.fast[randomIndex], nextFutureProcess));
+                    subject = diffFilter.easy;
+                    proTable = easyAP;
                 }
-                else if (rePro <= normalPro)
+                else if (diffPro <= normalPro)
                 {
-                    int randomIndex = 1;//Random.Range(0, diffFilter.normal.Count);
-                    //int index = diffFilter.normal.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
-                    CR = diffFilter.normal.fast[randomIndex].CR;
-                    FCI.Add(diffFilter.normal.fast[randomIndex].FCI);
-                    RTL.Add(new ReturnList(diffFilter.normal.fast[randomIndex], nextFutureProcess));
+                    subject = diffFilter.normal;
+                    proTable = normalAP;
                 }
-                else if (rePro <= hardPro)
+                else if (diffPro <= hardPro)
                 {
-                    int randomindex = 1;//Random.Range(0, diffFilter.hard.Count);
-                    //int index = diffFilter.hard.Select((p, i) => (Item: p, Index: i)).OrderByDescending(x => x.Item.CR.fPP.y).Select(x => x.Index).FirstOrDefault();
-                    CR = diffFilter.hard.fast[randomindex].CR;
-                    FCI.Add(diffFilter.hard.fast[randomindex].FCI);
-                    RTL.Add(new ReturnList(diffFilter.hard.fast[randomindex], nextFutureProcess));
+                    subject = diffFilter.hard;
+                    proTable = hardAP;
                 }
+
+                bool fast = subject.fast.Any();
+                bool medium = subject.medium.Any();
+                bool slow = subject.slow.Any();
+                
+                for (var i = 0; i < patterns.Length; i++)
+                {
+                    if (fast == patterns[i].First && medium == patterns[i].Second && slow == patterns[i].Third)
+                    {
+                        (fastPro, mediumPro, slowPro) = proTable[i];
+
+                        break;
+                    }
+                }
+
+                if (avoidPro <= fastPro) TargetList = subject.fast;
+                else if (avoidPro <= mediumPro) TargetList = subject.medium;
+                else if (avoidPro <= slowPro) TargetList = subject.slow;
+                
+                int randomindex = Random.Range(0, TargetList.Count);
+                int index = TargetList.Select((x, i) => (x.CR.fPP.y, i)).OrderByDescending(p => p.y).Select(p => p.i).FirstOrDefault();
+                CR = TargetList[index].CR;
+                FCI.Add(TargetList[index].FCI);
+                RTL.Add(new ReturnList(TargetList[index], nextFutureProcess));
+
                 if (CR.isEnd)
                 {
                     Vector3 aaafd = new Vector3(CR.fPP.x, transform.position.y, CR.fPP.y);
@@ -822,16 +892,18 @@ public class AIController : MonoBehaviour
                     Vector3 fff = new Vector3(CR.fVP.x, newVehicle.transform.position.y, CR.fVP.y);
                     //Instantiate(cube52, fff, newVehicle.transform.rotation);
                 }
-
                 Vector3 aaa = new Vector3(CR.fPP.x, transform.position.y, CR.fPP.y);
                 Quaternion bbb = Quaternion.Euler(0, CR.fPAn, 0);
-                //Instantiate(cube42, aaa, bbb);
+                Instantiate(cube42, aaa, bbb);
+
+                //Debug.Log("nextäÓèÄMVT:" + CR.MVT);
+                //Debug.Log("ç∑ï™MVT:" + CR.diffMVT);
 
                 nextFutureProcess = new List<int> { 1, 2, 3 };
             }
             else
             {
-                if (returnCount < 6 && RTL.Count >= 2 && PL.Count != 0)
+                if (returnCount < 6 && RTL.Count >= 2)
                 {
                     returnCount++;
                     //Debug.Log("<color=green>ReturnCount:</color>" + returnCount);
@@ -873,7 +945,7 @@ public class AIController : MonoBehaviour
 
                     Vector3 aaa = new Vector3(CR.fPP.x, transform.position.y + 1f, CR.fPP.y);
                     Quaternion bbb = Quaternion.Euler(0, CR.fPAn, 0);
-                    //Instantiate(cube2, aaa, bbb);
+                    Instantiate(cube2, aaa, bbb);
                 }
             }
         }
